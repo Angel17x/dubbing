@@ -47,7 +47,9 @@
               sendResponse({ ok: true });
               break;
             case 'DUBAI_WHISPER_STATUS':
-              if (D.engine.state === 'whisper') D.overlay.setStatus(msg.status || 'Whisper escuchando…');
+              if (D.engine.state === 'whisper' && (!D.engine.video || !D.engine.video.paused)) {
+                D.overlay.setStatus(msg.status || 'Whisper escuchando…');
+              }
               sendResponse({ ok: true });
               break;
             case 'DUBAI_PROGRESS':

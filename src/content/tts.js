@@ -9,6 +9,7 @@ window.DubAI = window.DubAI || {};
     audioUrl: null,
     loading: false,
     token: 0,
+    finish: null,
     cache: new Map(),
     inflight: new Map(),
 
@@ -78,9 +79,11 @@ window.DubAI = window.DubAI || {};
       const done = () => {
         if (!ended) {
           ended = true;
+          if (this.finish === done) this.finish = null;
           if (onend) onend();
         }
       };
+      this.finish = done;
       u.onstart = () => {
         started = true;
         if (onstart) onstart();
@@ -141,11 +144,13 @@ window.DubAI = window.DubAI || {};
         if (ended) return;
         ended = true;
         this.loading = false;
+        if (this.finish === done) this.finish = null;
         if (this.audioUrl) URL.revokeObjectURL(this.audioUrl);
         this.audioUrl = null;
         this.audio = null;
         if (onend) onend();
       };
+      this.finish = done;
 
       try {
         const res = await this._getXttsAudio(text, lang, xttsUrl, xttsReference);
@@ -177,6 +182,8 @@ window.DubAI = window.DubAI || {};
     cancel() {
       this.token++;
       this.loading = false;
+      const finish = this.finish;
+      this.finish = null;
       if (this.audio) {
         try {
           this.audio.pause();
@@ -189,6 +196,8 @@ window.DubAI = window.DubAI || {};
       try {
         speechSynthesis.cancel();
       } catch (e) {}
+      // Libera también cualquier cola que esté esperando el final de la voz.
+      if (finish) finish();
     }
   };
 

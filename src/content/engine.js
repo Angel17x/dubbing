@@ -15,7 +15,7 @@ window.DubAI = window.DubAI || {};
     timer: null,
     duckCount: 0,
     origVolume: 1,
-    whisper: { active: false },
+    whisper: { active: false, epoch: 0, queue: Promise.resolve() },
     _bound: null,
 
     async toggle() {
@@ -337,6 +337,10 @@ window.DubAI = window.DubAI || {};
     onPause() {
       // Pausa interna para dejar terminar una frase larga: no cancelar el TTS.
       if (this._speechHold) return;
+      if (this.state === 'whisper') {
+        this.whisper.epoch++;
+        D.overlay.setStatus('Whisper pausado con el video');
+      }
       D.tts.cancel();
       this.restoreVolume();
       // Al reanudar, repetir el cue que quedó a medias
@@ -383,6 +387,8 @@ window.DubAI = window.DubAI || {};
     async startWhisper() {
       this.state = 'whisper';
       this.whisper.active = true;
+      this.whisper.epoch++;
+      this.whisper.queue = Promise.resolve();
       D.overlay.setStatus('Iniciando Whisper local (la 1ª vez descarga el modelo)…');
       const res = await chrome.runtime.sendMessage({ type: 'DUBAI_WHISPER_START', lang: this.settings.sourceLang });
       if (!res || res.error) {
@@ -397,12 +403,28 @@ window.DubAI = window.DubAI || {};
 
     attachWhisper() {
       const v = this.video;
-      this._bound = { pause: () => this.onPause(), ended: () => this.onPause() };
+      this._bound = {
+        pause: () => this.onPause(),
+        play: () => D.overlay.setStatus('Whisper escuchando y doblando…'),
+        ended: () => this.onPause()
+      };
       for (const [ev, fn] of Object.entries(this._bound)) v.addEventListener(ev, fn);
     },
 
-    async onWhisperSegment(seg) {
-      if (!this.whisper.active || !seg || !seg.text) return;
+    onWhisperSegment(seg) {
+      if (!this.whisper.active || !seg || !seg.text || !this.video || this.video.paused) return;
+      const epoch = this.whisper.epoch;
+      // Mantener una sola voz y una sola traducción a la vez. Así las personas
+      // que hablan rápido no pisan el audio del segmento anterior.
+      this.whisper.queue = this.whisper.queue
+        .catch(() => {})
+        .then(() => this.processWhisperSegment(seg, epoch));
+    },
+
+    async processWhisperSegment(seg, epoch) {
+      const valid = () =>
+        this.whisper.active && this.whisper.epoch === epoch && this.video && !this.video.paused && this.state === 'whisper';
+      if (!valid()) return;
       const tgt = this.settings.targetLang;
       let text = seg.text;
       let src = seg.lang || this.settings.sourceLang || 'auto';
@@ -417,16 +439,24 @@ window.DubAI = window.DubAI || {};
           D.warn('No se pudo traducir segmento Whisper', e);
         }
       }
+      // La traducción puede terminar después de que el usuario haya pausado.
+      // En ese caso se descarta para que nunca hable sobre el video detenido.
+      if (!valid() || !text) return;
       D.overlay.setCaption(this.settings.showSubs ? text : '');
-      D.tts.speak(text, {
-        rate: this.settings.rate || 1,
-        lang: tgt,
-        voiceURI: this.settings.voiceURI,
-        backend: this.settings.voiceBackend,
-        xttsUrl: this.settings.xttsUrl,
-        xttsReference: this.settings.xttsReference,
-        onstart: () => this.duck(true),
-        onend: () => this.duck(false)
+      await new Promise((resolve) => {
+        D.tts.speak(text, {
+          rate: D.clamp((this.settings.rate || 1) * 1.08, 0.75, 1.25),
+          lang: tgt,
+          voiceURI: this.settings.voiceURI,
+          backend: this.settings.voiceBackend,
+          xttsUrl: this.settings.xttsUrl,
+          xttsReference: this.settings.xttsReference,
+          onstart: () => this.duck(true),
+          onend: () => {
+            this.duck(false);
+            resolve();
+          }
+        });
       });
     },
 

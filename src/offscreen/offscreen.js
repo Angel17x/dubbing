@@ -89,7 +89,21 @@ async function whisperStart({ streamId, lang, tabId }) {
   await whisperStop();
 
   if (!whisperPipe) {
-    whisperPipe = await tf.pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny', { dtype: 'q8' });
+    // WebGPU reduce drásticamente la demora frente al WASM mono-hilo exigido
+    // por Manifest V3. Mantener WASM como respaldo para equipos incompatibles.
+    if (navigator.gpu) {
+      try {
+        whisperPipe = await tf.pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny', {
+          device: 'webgpu',
+          dtype: 'fp16'
+        });
+      } catch (e) {
+        console.warn('[DubAI offscreen] WebGPU no disponible para Whisper; usando WASM', e);
+      }
+    }
+    if (!whisperPipe) {
+      whisperPipe = await tf.pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny', { dtype: 'q8' });
+    }
   }
 
   const stream = await navigator.mediaDevices.getUserMedia({
@@ -104,7 +118,9 @@ async function whisperStart({ streamId, lang, tabId }) {
   source.connect(ctx.destination);
 
   const processor = ctx.createScriptProcessor(4096, 1, 1);
-  const CHUNK_SEC = 8;
+  // Bloques menores entregan texto antes sin recortar tanto contexto como
+  // para perjudicar frases rápidas.
+  const CHUNK_SEC = 5;
   let buffer = [];
   let bufferedSec = 0;
   let busy = false;
@@ -186,6 +202,15 @@ function resampleTo16k(input, sourceRate) {
 async function transcribeChunk(audio, sampleRate, startSec, lang, tabId) {
   try {
     audio = resampleTo16k(audio, sampleRate);
+    let energy = 0;
+    for (let i = 0; i < audio.length; i++) energy += audio[i] * audio[i];
+    const rms = Math.sqrt(energy / Math.max(1, audio.length));
+    if (rms < 0.0012) {
+      chrome.runtime
+        .sendMessage({ type: 'DUBAI_WHISPER_STATUS_RELAY', tabId, status: 'Whisper esperando voz…' })
+        .catch(() => {});
+      return;
+    }
     const opts = { chunk_length_s: 15, stride_length_s: 3, return_timestamps: false, task: 'transcribe' };
     if (lang && lang !== 'auto' && WHISPER_LANGS[lang]) opts.language = WHISPER_LANGS[lang];
     const r = await whisperPipe(audio, opts);
