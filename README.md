@@ -7,6 +7,10 @@ plataformas. La traducción y la voz pueden ejecutarse localmente:
 - XTTS v2 genera la voz clonada desde un audio de referencia.
 - Whisper intenta transcribir videos sin subtítulos (modo experimental).
 - DubAI sincroniza la voz con pausa, reproducción y desplazamiento del video.
+- Ollama conserva comandos y términos técnicos en inglés dentro de una
+  traducción natural al español.
+- Una memoria local aprende del glosario y de las correcciones del usuario.
+- La traducción y las voces XTTS se preparan por adelantado para reducir latencia.
 
 ## Requisitos
 
@@ -113,7 +117,7 @@ La muestra se guarda en `xtts-server/test-roger.wav`.
 5. Después de cualquier actualización, pulsa **Recargar** en DubAI.
 6. Recarga las pestañas de video con `Ctrl+F5`.
 
-La versión actual es `0.2.1`.
+La versión actual es `0.3.1`.
 
 ## Configuración recomendada
 
@@ -134,6 +138,21 @@ C:\Users\PC\Downloads\ElevenLabs_2026-09-06T02_00_43_Roger - Laid-Back, Casual, 
 
 Pulsa **Probar conexión** para Ollama y **Probar servidor XTTS** para la voz.
 
+### Memoria de traducción
+
+El popup contiene la sección **🧠 Memoria de traducción**. Añade una regla por
+línea usando el formato:
+
+```text
+kubectl = kubectl
+nerdctl = nerdctl
+command line = línea de comandos
+```
+
+DubAI envía únicamente las reglas relevantes a Ollama. Siglas, comandos,
+herramientas, rutas, código y opciones de terminal se conservan en inglés,
+mientras el resto se expresa en español natural.
+
 ## Uso
 
 1. Inicia Ollama y XTTS.
@@ -149,13 +168,32 @@ recalcula la posición.
 Si una frase tarda más que su intervalo, DubAI puede pausar brevemente el video
 para evitar acelerar demasiado la voz o superponer frases.
 
+DubAI prepara inicialmente seis fragmentos y después traduce en lotes mayores.
+XTTS mantiene una cola limitada de próximas voces para que el doblaje permanezca
+por delante incluso cuando el hablante original habla rápido.
+
+### Enseñar una traducción
+
+Cuando aparezca un subtítulo traducido, pulsa **✏️**, escribe la forma correcta y
+confirma. La corrección:
+
+- Se aplica al texto actual.
+- Se guarda en `chrome.storage.local`.
+- Se reutiliza exactamente si vuelve a aparecer la misma frase.
+- Se proporciona a Ollama como ejemplo cuando sea relevante.
+
+Las correcciones no reentrenan el modelo y no salen del equipo. Puedes consultar
+el total aprendido o borrarlas desde **🧠 Memoria de traducción**.
+
 ## Videos sin subtítulos
 
 Activa **Modo Whisper si no hay subtítulos**. DubAI capturará el audio de la
 pestaña, intentará transcribirlo localmente, lo traducirá y generará la voz.
 
 Este modo es experimental y tiene más retraso que trabajar con subtítulos
-existentes.
+existentes. Procesa bloques de cinco segundos, intenta utilizar WebGPU y vuelve
+a WASM si el equipo no lo admite. Al pausar el video también cancela cualquier
+traducción o voz atrasada.
 
 ## Plataformas
 
@@ -245,6 +283,7 @@ página del video.
 ```text
 Video
   -> extractor de subtítulos o Whisper
+  -> memoria local (glosario y correcciones)
   -> Ollama / Chrome Translator / NLLB
   -> XTTS o voces del sistema
   -> reproducción sincronizada con el video
@@ -256,6 +295,7 @@ Componentes principales:
 - `src/background/sw.js`: acceso a Ollama, XTTS y recursos externos.
 - `src/offscreen`: modelos locales de Transformers.js y Whisper.
 - `src/popup`: configuración de la extensión.
+- `chrome.storage.local`: glosario y memoria de correcciones.
 - `xtts-server/server.py`: API local de clonación de voz.
 - `scripts`: inicio, pruebas y validación.
 
