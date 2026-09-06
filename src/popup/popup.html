@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="stylesheet" href="popup.css" />
+  <title>DubAI</title>
+</head>
+<body>
+  <header>
+    <h1>🎙️ DubAI</h1>
+    <span id="state" class="badge">—</span>
+  </header>
+
+  <main>
+    <button id="toggle" class="primary">▶ Activar doblaje</button>
+
+    <label>
+      Idioma destino
+      <select id="targetLang"></select>
+    </label>
+
+    <label>
+      Idioma origen
+      <select id="sourceLang"></select>
+    </label>
+
+    <label>
+      Motor de voz
+      <select id="voiceBackend">
+        <option value="xtts">XTTS local — voz clonada</option>
+        <option value="system">Voces del sistema</option>
+      </select>
+    </label>
+
+    <div id="xttsCfg">
+      <label>
+        URL de XTTS
+        <input type="text" id="xttsUrl" placeholder="http://127.0.0.1:8020" />
+      </label>
+      <label>
+        Audio de referencia
+        <input type="text" id="xttsReference" />
+      </label>
+      <button id="testXtts" type="button" class="secondary">Probar servidor XTTS</button>
+      <p id="xttsStatus" class="hint"></p>
+    </div>
+
+    <label id="systemVoiceCfg">
+      Voz del sistema
+      <select id="voice"></select>
+    </label>
+
+    <label>
+      Velocidad de voz: <span id="rateVal">1.0</span>x
+      <input type="range" id="rate" min="0.7" max="1.6" step="0.05" value="1" />
+    </label>
+
+    <label class="row">
+      <input type="checkbox" id="duck" checked />
+      Bajar volumen original al hablar
+    </label>
+
+    <label>
+      Nivel de volumen original: <span id="duckVal">25%</span>
+      <input type="range" id="duckLevel" min="0" max="0.8" step="0.05" value="0.25" />
+    </label>
+
+    <label class="row">
+      <input type="checkbox" id="showSubs" checked />
+      Mostrar subtítulos traducidos
+    </label>
+
+    <label>
+      Motor de traducción
+      <select id="translatorBackend">
+        <option value="auto">Automático (recomendado)</option>
+        <option value="chrome">Chrome Translator (on-device)</option>
+        <option value="offscreen">Modelo local transformers.js</option>
+        <option value="ollama">Ollama (mi modelo local)</option>
+      </select>
+    </label>
+
+    <div id="ollamaCfg" class="hidden">
+      <label>
+        URL de Ollama
+        <input type="text" id="ollamaUrl" placeholder="http://localhost:11434" />
+      </label>
+      <label>
+        Modelo
+        <input type="text" id="ollamaModel" list="ollamaModels" placeholder="llama3.1:8b" />
+        <datalist id="ollamaModels"></datalist>
+      </label>
+      <button id="testOllama" type="button" class="secondary">Probar conexión</button>
+      <p id="ollamaStatus" class="hint"></p>
+    </div>
+
+    <label class="row">
+      <input type="checkbox" id="whisperFallback" />
+      Modo Whisper si no hay subtítulos (experimental)
+    </label>
+
+    <p id="hint" class="hint"></p>
+  </main>
+
+  <script src="popup.js"></script>
+</body>
+</html>

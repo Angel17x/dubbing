@@ -1,0 +1,104 @@
+{
+  "manifest_version": 3,
+  "name": "DubAI — Doblaje IA en tiempo real",
+  "version": "0.2.2",
+  "description": "Traduce y dobla videos de YouTube y Udemy en tiempo real con IA local: subtítulos, traducción on-device y voces TTS sincronizadas.",
+  "permissions": ["storage", "offscreen", "tabCapture"],
+  "host_permissions": [
+    "http://localhost:11434/*",
+    "http://127.0.0.1:11434/*",
+    "http://localhost:8020/*",
+    "http://127.0.0.1:8020/*",
+    "https://*/*"
+  ],
+  "background": { "service_worker": "src/background/sw.js" },
+  "action": {
+    "default_popup": "src/popup/popup.html",
+    "default_title": "DubAI — Doblaje IA"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.youtube.com/*",
+        "https://www.youtube-nocookie.com/*",
+        "https://*.udemy.com/*",
+        "https://www.coursera.org/*",
+        "https://*.bilibili.com/*",
+        "https://vimeo.com/*",
+        "https://*.vimeo.com/*",
+        "https://*.khanacademy.org/*",
+        "https://www.linkedin.com/*",
+        "https://*.pluralsight.com/*",
+        "https://www.skillshare.com/*",
+        "https://*.skillshare.com/*",
+        "https://www.udacity.com/*",
+        "https://*.edx.org/*"
+      ],
+      "js": ["src/content/net-hook-injector.js"],
+      "run_at": "document_start",
+      "all_frames": true
+    },
+    {
+      "matches": [
+        "https://www.youtube.com/*",
+        "https://www.youtube-nocookie.com/*",
+        "https://*.udemy.com/*",
+        "https://www.coursera.org/*",
+        "https://*.bilibili.com/*",
+        "https://vimeo.com/*",
+        "https://*.vimeo.com/*",
+        "https://*.khanacademy.org/*",
+        "https://www.linkedin.com/*",
+        "https://*.pluralsight.com/*",
+        "https://www.skillshare.com/*",
+        "https://*.skillshare.com/*",
+        "https://www.udacity.com/*",
+        "https://*.edx.org/*"
+      ],
+      "all_frames": true,
+      "js": [
+        "src/content/namespace.js",
+        "src/content/vtt-parser.js",
+        "src/content/subtitles/generic.js",
+        "src/content/subtitles/youtube.js",
+        "src/content/subtitles/udemy.js",
+        "src/content/translator.js",
+        "src/content/tts.js",
+        "src/content/overlay.js",
+        "src/content/player-button.js",
+        "src/content/engine.js",
+        "src/content/content.js"
+      ],
+      "css": ["src/content/content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["src/content/page-hook.js"],
+      "matches": ["https://www.youtube.com/*", "https://www.youtube-nocookie.com/*"]
+    },
+    {
+      "resources": ["src/content/net-hook.js"],
+      "matches": [
+        "https://www.youtube.com/*",
+        "https://www.youtube-nocookie.com/*",
+        "https://*.udemy.com/*",
+        "https://www.coursera.org/*",
+        "https://*.bilibili.com/*",
+        "https://vimeo.com/*",
+        "https://*.vimeo.com/*",
+        "https://*.khanacademy.org/*",
+        "https://www.linkedin.com/*",
+        "https://*.pluralsight.com/*",
+        "https://www.skillshare.com/*",
+        "https://*.skillshare.com/*",
+        "https://www.udacity.com/*",
+        "https://*.edx.org/*"
+      ]
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  }
+}

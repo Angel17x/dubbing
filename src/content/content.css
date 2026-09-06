@@ -1,0 +1,143 @@
+/* DubAI — estilos del overlay */
+#dubai-root {
+  all: initial;
+}
+
+#dubai-panel {
+  position: fixed;
+  right: 18px;
+  bottom: 90px;
+  z-index: 2147483646;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+}
+
+#dubai-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(20, 20, 28, 0.92);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+  transition: transform 0.15s ease, background 0.2s ease;
+}
+
+#dubai-toggle:hover {
+  transform: scale(1.05);
+}
+
+#dubai-toggle.active {
+  background: #c4302b;
+}
+
+#dubai-whisper {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid #6a5acd;
+  border-radius: 999px;
+  background: rgba(48, 38, 90, 0.95);
+  color: #d8ccff;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+  font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+}
+
+#dubai-whisper:hover {
+  background: rgba(66, 52, 122, 0.95);
+}
+
+/* Botón integrado en la barra del reproductor de YouTube */
+.dubai-player-btn {
+  position: relative;
+  color: #eee !important; /* YouTube estiliza con fill, no con color: forzamos ambos */
+  fill: #eee !important;
+  cursor: pointer;
+}
+
+.dubai-player-btn svg {
+  width: 24px;
+  height: 24px;
+  display: block;
+  margin: 0 auto;
+  fill: currentColor;
+}
+
+.dubai-player-btn.dubai-on {
+  color: #ff4e45 !important;
+  fill: #ff4e45 !important;
+}
+
+.dubai-player-btn.dubai-on::after {
+  content: '';
+  position: absolute;
+  bottom: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #ff4e45;
+}
+
+#dubai-info {
+  max-width: 260px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(20, 20, 28, 0.85);
+  color: #cfd2dc;
+  font-size: 12px;
+  text-align: right;
+}
+
+#dubai-status:empty {
+  display: none;
+}
+
+#dubai-bar {
+  height: 4px;
+  margin-top: 5px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.15);
+  overflow: hidden;
+}
+
+#dubai-bar-fill {
+  height: 100%;
+  width: 0;
+  background: #4da3ff;
+  transition: width 0.25s ease;
+}
+
+#dubai-captions {
+  display: none;
+  position: fixed;
+  left: 50%;
+  bottom: 11vh;
+  transform: translateX(-50%);
+  z-index: 2147483646;
+  max-width: 72vw;
+  padding: 6px 14px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.72);
+  color: #fff;
+  font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+  font-size: 22px;
+  line-height: 1.35;
+  text-align: center;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  pointer-events: none;
+  white-space: pre-line;
+}

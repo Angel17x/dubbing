@@ -1,0 +1,22 @@
+# Entornos y cachés de Python
+xtts-server/.venv/
+**/__pycache__/
+*.py[cod]
+
+# Salidas y registros locales
+xtts-server/*.log
+xtts-server/test-*.wav
+*.tmp
+
+# Configuración local de editores y sistema
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Modelos grandes (se descargan al iniciar)
+models/
+*.pth
+*.safetensors
+*.onnx
+
