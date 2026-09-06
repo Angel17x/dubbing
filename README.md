@@ -14,14 +14,15 @@ plataformas. La traducción y la voz pueden ejecutarse localmente:
 
 ## Requisitos
 
-- Windows 10/11.
+- Windows 10/11, macOS o Linux.
 - Google Chrome.
 - Ollama.
 - Python 3.11 para el servidor XTTS.
-- GPU NVIDIA recomendada. La configuración actual usa una RTX 5060 Ti.
+- GPU NVIDIA recomendada en Windows/Linux. En macOS, XTTS se ejecuta actualmente
+  en CPU porque este servidor solo selecciona CUDA o CPU.
 - Un audio de referencia cuya voz tengas autorización para utilizar.
 
-El entorno XTTS de este equipo ya está instalado en `xtts-server/.venv`.
+El entorno XTTS debe estar instalado en `xtts-server/.venv`.
 
 ## Inicio rápido
 
@@ -43,6 +44,23 @@ O ejecútalo desde PowerShell:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\start-all.ps1
+```
+
+En macOS y Linux:
+
+```bash
+./start-dubai.sh
+```
+
+Si `xtts-server/.venv` no existe, el lanzador crea el entorno e instala sus
+dependencias automáticamente. La primera instalación puede tardar varios
+minutos.
+
+La primera vez, si el archivo no conserva el permiso de ejecución:
+
+```bash
+chmod +x start-dubai.sh scripts/setup-xtts.sh
+./start-dubai.sh
 ```
 
 El comando cierra servidores anteriores, reinicia Ollama, autoriza DubAI,
