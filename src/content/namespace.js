@@ -72,4 +72,18 @@ window.DubAI = window.DubAI || {};
     if (h.includes('udemy')) return 'udemy';
     return 'generic';
   };
+
+  // Identidad estable del contenido: ignora cambios de tiempo, hash y otros
+  // parámetros que no representan un video nuevo.
+  D.mediaKey = () => {
+    const url = new URL(location.href);
+    if (url.hostname.includes('youtube')) {
+      const id =
+        url.searchParams.get('v') ||
+        ((url.pathname.match(/\/(?:embed|shorts|live)\/([\w-]+)/) || [])[1]);
+      return `youtube:${id || url.pathname}`;
+    }
+    if (url.hostname.includes('udemy')) return `udemy:${url.pathname}`;
+    return `${url.origin}${url.pathname}`;
+  };
 })(window.DubAI);

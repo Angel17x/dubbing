@@ -19,6 +19,7 @@ window.DubAI = window.DubAI || {};
     _bound: null,
     _resumeAfterBuffer: false,
     _initialBufferResolve: null,
+    _runId: 0,
 
     async toggle() {
       if (this.state === 'idle' || this.state === 'stopped' || this.state === 'error') return this.start();
@@ -26,13 +27,19 @@ window.DubAI = window.DubAI || {};
     },
 
     async start() {
+      const runId = ++this._runId;
+      const mediaKey = D.mediaKey();
+      const stale = () => runId !== this._runId || D.mediaKey() !== mediaKey;
       try {
         this.state = 'loading';
         this.settings = await D.getSettings();
+        if (stale()) return;
         D.translator.settings = this.settings;
         D.overlay.setActive(true);
         D.overlay.setStatus('Buscando video…');
-        this.video = await D.waitForVideo();
+        const video = await D.waitForVideo();
+        if (stale()) return;
+        this.video = video;
 
         const extractor = D.subtitles[D.currentSite()] || D.subtitles.generic;
         D.overlay.setStatus('Extrayendo subtítulos…');
@@ -42,6 +49,7 @@ window.DubAI = window.DubAI || {};
         } catch (e) {
           D.warn('extractor falló', e);
         }
+        if (stale()) return;
 
         if (!data || !data.cues || !data.cues.length) {
           // Muchos players solo cargan las pistas al reproducir: reintenta una vez al dar ▶
@@ -51,6 +59,7 @@ window.DubAI = window.DubAI || {};
           if (played && this.settings.whisperFallback) return this.startWhisper();
           if (!played) {
             D.overlay.setStatus('Sin subtítulos aún… pulsa ▶ en el video');
+            const waitingVideo = this.video;
             played = await new Promise((resolve) => {
               let settled = false;
               const onPlaying = () => done(true);
@@ -58,14 +67,15 @@ window.DubAI = window.DubAI || {};
                 if (!settled) {
                   settled = true;
                   clearTimeout(timeout);
-                  this.video.removeEventListener('playing', onPlaying);
+                  waitingVideo.removeEventListener('playing', onPlaying);
                   resolve(value);
                 }
               };
               const timeout = setTimeout(() => done(false), 20000);
-              this.video.addEventListener('playing', onPlaying, { once: true });
+              waitingVideo.addEventListener('playing', onPlaying, { once: true });
             });
           }
+          if (stale()) return;
           if (played && this.state === 'loading') {
             D.overlay.setStatus('Reintentando extracción de subtítulos…');
             await D.sleep(1500);
@@ -74,6 +84,7 @@ window.DubAI = window.DubAI || {};
             } catch (e) {
               D.warn('reintento falló', e);
             }
+            if (stale()) return;
           }
         }
 
@@ -87,7 +98,7 @@ window.DubAI = window.DubAI || {};
         }
 
         await this.prepareCues(data);
-        if (this.state !== 'loading') return;
+        if (stale() || this.state !== 'loading') return;
         this.attach();
         this.state = 'ready';
         if (this.translationDone) {
@@ -102,6 +113,7 @@ window.DubAI = window.DubAI || {};
           this.video.play().catch(() => {});
         }
       } catch (e) {
+        if (stale()) return;
         console.error('[DubAI]', e);
         this.state = 'error';
         D.overlay.setStatus('Error: ' + (e && e.message ? e.message : e));
@@ -543,6 +555,7 @@ window.DubAI = window.DubAI || {};
     },
 
     async stop() {
+      this._runId++;
       this.state = 'stopped';
       this._autoPaused = false;
       this._resumeAfterBuffer = false;

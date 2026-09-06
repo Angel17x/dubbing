@@ -117,7 +117,7 @@ La muestra se guarda en `xtts-server/test-roger.wav`.
 5. Después de cualquier actualización, pulsa **Recargar** en DubAI.
 6. Recarga las pestañas de video con `Ctrl+F5`.
 
-La versión actual es `0.3.1`.
+La versión actual es `0.3.2`.
 
 ## Configuración recomendada
 

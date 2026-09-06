@@ -2,7 +2,9 @@
 (function (D) {
   'use strict';
 
-  let lastHref = location.href;
+  let lastMediaKey = D.mediaKey();
+  let restartTimer = null;
+  let pendingRestart = false;
 
   async function boot() {
     const isTop = window.top === window;
@@ -70,17 +72,28 @@
       return true; // respuesta asíncrona
     });
 
-    // YouTube y Udemy son SPAs: reiniciar el doblaje al cambiar de video
+    // YouTube y Udemy son SPAs: cancelar inmediatamente el contenido anterior
+    // y reiniciar una sola vez cuando se estabilice la identidad del nuevo video.
     setInterval(() => {
-      if (location.href !== lastHref) {
-        lastHref = location.href;
-        if (D.playerButton) D.playerButton.inject(); // el player se recrea en cada navegación
-        if (['loading', 'ready', 'whisper'].includes(D.engine.state)) {
-          D.log('navegación detectada, reiniciando doblaje');
-          D.engine.stop().then(() => setTimeout(() => D.engine.start(), 1500));
-        }
+      const mediaKey = D.mediaKey();
+      if (mediaKey === lastMediaKey) return;
+      lastMediaKey = mediaKey;
+      clearTimeout(restartTimer);
+      if (['loading', 'ready', 'whisper'].includes(D.engine.state)) pendingRestart = true;
+      if (pendingRestart) {
+        D.log('nuevo video detectado, descartando doblaje anterior');
+        D.engine.stop();
+        const expectedKey = mediaKey;
+        restartTimer = setTimeout(() => {
+          if (!pendingRestart || D.mediaKey() !== expectedKey) return;
+          pendingRestart = false;
+          if (D.playerButton) D.playerButton.inject();
+          D.engine.start();
+        }, 1200);
+      } else if (D.playerButton) {
+        D.playerButton.inject();
       }
-    }, 1200);
+    }, 400);
 
     D.log('content script listo en', location.hostname);
   }
