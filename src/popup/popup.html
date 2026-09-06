@@ -110,6 +110,16 @@
       <p id="memoryStatus" class="hint"></p>
     </details>
 
+    <details id="assistantCfg">
+      <summary>Asistente del video</summary>
+      <label class="row">
+        <input type="checkbox" id="autoSummary" checked />
+        Generar resumen al finalizar
+      </label>
+      <button id="clearVideoKnowledge" type="button" class="secondary danger">Borrar resúmenes y chats</button>
+      <p id="assistantStatus" class="hint"></p>
+    </details>
+
     <label class="row">
       <input type="checkbox" id="whisperFallback" />
       Modo Whisper si no hay subtítulos (experimental)

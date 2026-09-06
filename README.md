@@ -117,7 +117,7 @@ La muestra se guarda en `xtts-server/test-roger.wav`.
 5. Después de cualquier actualización, pulsa **Recargar** en DubAI.
 6. Recarga las pestañas de video con `Ctrl+F5`.
 
-La versión actual es `0.4.1`.
+La versión actual es `0.5.0`.
 
 ## Configuración recomendada
 
@@ -196,6 +196,29 @@ confirma. La corrección:
 
 Las correcciones no reentrenan el modelo y no salen del equipo. Puedes consultar
 el total aprendido o borrarlas desde **🧠 Memoria de traducción**.
+
+## Resumen y chat del video
+
+El botón de conversación situado junto al micrófono abre el asistente lateral.
+Sus dos vistas permiten:
+
+- Generar un resumen estructurado en cualquier momento.
+- Crear automáticamente el resumen cuando finaliza el video.
+- Preguntar por conceptos, comandos o explicaciones de la lección.
+- Pulsar referencias como `08:42` para saltar a ese momento.
+
+DubAI divide la transcripción en fragmentos de 30–60 segundos. Para responder,
+selecciona localmente los fragmentos más relacionados y los envía a Ollama. La
+respuesta separa **Según el video** de **Información adicional**, evitando
+presentar conocimiento general como si formara parte de la lección.
+
+El asistente utiliza Ollama aunque hayas seleccionado Chrome Translator para el
+doblaje; por tanto, `ollama serve` debe estar disponible para resumir o preguntar.
+
+Los videos largos se resumen por etapas y después se consolidan. Transcripciones,
+resúmenes y hasta 50 mensajes por video se guardan en `chrome.storage.local`.
+Se conservan como máximo los 30 videos recientes. Puedes borrar todo desde
+**Asistente del video** en el popup.
 
 ## Videos sin subtítulos
 
@@ -299,11 +322,18 @@ Video
   -> Ollama / Chrome Translator / NLLB
   -> XTTS o voces del sistema
   -> reproducción sincronizada con el video
+
+Transcripción con timestamps
+  -> fragmentos locales relevantes
+  -> resumen jerárquico / preguntas a Ollama
+  -> panel lateral con referencias al video
 ```
 
 Componentes principales:
 
 - `src/content`: extracción, traducción, TTS y sincronización.
+- `src/content/video-knowledge.js`: transcripción, fragmentos y recuperación.
+- `src/content/assistant-panel.js`: resumen, chat y navegación por timestamps.
 - `src/background/sw.js`: acceso a Ollama, XTTS y recursos externos.
 - `src/offscreen`: modelos locales de Transformers.js y Whisper.
 - `src/popup`: configuración de la extensión.

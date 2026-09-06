@@ -20,6 +20,7 @@
     }
 
     D.overlay.create();
+    if (D.assistantPanel) D.assistantPanel.create();
     D.tts.init();
     if (D.playerButton) D.playerButton.inject();
 
@@ -62,6 +63,10 @@
               }
               sendResponse({ ok: true });
               break;
+            case 'DUBAI_ASSISTANT_PROGRESS':
+              if (D.assistantPanel) D.assistantPanel.setProgress(msg.status || '');
+              sendResponse({ ok: true });
+              break;
             default:
               sendResponse({ ok: false });
           }
@@ -78,6 +83,7 @@
       const mediaKey = D.mediaKey();
       if (mediaKey === lastMediaKey) return;
       lastMediaKey = mediaKey;
+      if (D.assistantPanel) D.assistantPanel.resetForVideo();
       clearTimeout(restartTimer);
       if (['loading', 'ready', 'whisper'].includes(D.engine.state)) pendingRestart = true;
       if (pendingRestart) {

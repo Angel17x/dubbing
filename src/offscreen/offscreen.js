@@ -85,7 +85,7 @@ const WHISPER_LANGS = {
   uk: 'ukrainian', sv: 'swedish'
 };
 
-async function whisperStart({ streamId, lang, tabId }) {
+async function whisperStart({ streamId, lang, tabId, startOffset = 0 }) {
   await whisperStop();
 
   if (!whisperPipe) {
@@ -124,10 +124,12 @@ async function whisperStart({ streamId, lang, tabId }) {
   let buffer = [];
   let bufferedSec = 0;
   let busy = false;
-  let chunkStart = 0;
+  let chunkStart = Number(startOffset) || 0;
   let lastStatusAt = 0;
+  let capturePaused = false;
 
   processor.onaudioprocess = (ev) => {
+    if (capturePaused) return;
     const data = ev.inputBuffer.getChannelData(0);
     buffer.push(new Float32Array(data));
     bufferedSec += data.length / ctx.sampleRate;
@@ -169,7 +171,21 @@ async function whisperStart({ streamId, lang, tabId }) {
   silent.gain.value = 0;
   processor.connect(silent);
   silent.connect(ctx.destination);
-  whisperSession = { ctx, stream, source, processor, silent, tabId, lang };
+  whisperSession = {
+    ctx,
+    stream,
+    source,
+    processor,
+    silent,
+    tabId,
+    lang,
+    setClock(paused, currentTime) {
+      capturePaused = !!paused;
+      buffer = [];
+      bufferedSec = 0;
+      chunkStart = Number(currentTime) || 0;
+    }
+  };
   return { ok: true };
 }
 
@@ -267,6 +283,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           break;
         case 'WHISPER_STOP':
           sendResponse(await whisperStop());
+          break;
+        case 'WHISPER_CLOCK':
+          if (whisperSession && whisperSession.setClock) {
+            whisperSession.setClock(msg.paused, msg.currentTime);
+          }
+          sendResponse({ ok: true });
           break;
         default:
           sendResponse({ error: 'tipo desconocido: ' + msg.type });

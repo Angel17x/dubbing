@@ -103,21 +103,24 @@ textarea {
   display: none;
 }
 
-#memoryCfg {
+#memoryCfg,
+#assistantCfg {
   padding: 9px;
   border: 1px solid #33334a;
   border-radius: 8px;
   background: #191924;
 }
 
-#memoryCfg summary {
+#memoryCfg summary,
+#assistantCfg summary {
   cursor: pointer;
   color: #cfd2dc;
   font-size: 12.5px;
   font-weight: 600;
 }
 
-#memoryCfg[open] summary {
+#memoryCfg[open] summary,
+#assistantCfg[open] summary {
   margin-bottom: 8px;
 }
 

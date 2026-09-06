@@ -81,6 +81,219 @@
   bottom: 4px;
 }
 
+.dubai-assistant-fallback {
+  right: 90px;
+}
+
+#dubai-assistant-root {
+  all: initial;
+}
+
+#dubai-assistant-panel,
+#dubai-assistant-panel * {
+  box-sizing: border-box;
+}
+
+#dubai-assistant-panel {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  bottom: 12px;
+  z-index: 2147483647;
+  display: flex;
+  flex-direction: column;
+  width: min(390px, calc(100vw - 24px));
+  border: 1px solid #343446;
+  border-radius: 14px;
+  background: #14141c;
+  color: #e8eaf2;
+  font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+  box-shadow: 0 12px 42px rgba(0, 0, 0, 0.55);
+  transform: translateX(calc(100% + 28px));
+  visibility: hidden;
+  transition: transform 0.2s ease, visibility 0.2s;
+}
+
+#dubai-assistant-panel.open {
+  transform: translateX(0);
+  visibility: visible;
+}
+
+.dubai-assistant-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 15px 10px;
+}
+
+.dubai-assistant-header strong,
+.dubai-assistant-header small {
+  display: block;
+}
+
+.dubai-assistant-header strong {
+  font-size: 15px;
+}
+
+.dubai-assistant-header small {
+  margin-top: 2px;
+  color: #8f94aa;
+  font-size: 11px;
+}
+
+#dubai-assistant-close {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 50%;
+  background: #242432;
+  color: #e8eaf2;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.dubai-assistant-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 12px 10px;
+  border-bottom: 1px solid #2c2c3b;
+}
+
+.dubai-assistant-tabs button {
+  flex: 1;
+  padding: 8px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #9ca1b5;
+  cursor: pointer;
+}
+
+.dubai-assistant-tabs button.active {
+  background: #29293a;
+  color: #fff;
+}
+
+.dubai-assistant-view {
+  display: none;
+  min-height: 0;
+  flex: 1;
+  padding: 12px;
+}
+
+.dubai-assistant-view.active {
+  display: flex;
+  flex-direction: column;
+}
+
+.dubai-assistant-primary {
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: #c4302b;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dubai-assistant-primary:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.dubai-assistant-status,
+.dubai-assistant-empty {
+  margin: 8px 2px;
+  color: #8f94aa;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+#dubai-summary-output {
+  margin-top: 8px;
+  padding-right: 4px;
+  overflow: auto;
+}
+
+.dubai-rich-text,
+.dubai-chat-message {
+  color: #e3e5ee;
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.dubai-timestamp {
+  display: inline;
+  padding: 1px 4px;
+  border: 0;
+  border-radius: 4px;
+  background: #263b59;
+  color: #86b9ff;
+  font: inherit;
+  cursor: pointer;
+}
+
+#dubai-chat-messages {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+}
+
+.dubai-chat-message {
+  max-width: 92%;
+  margin: 8px 0;
+  padding: 9px 11px;
+  border-radius: 10px;
+}
+
+.dubai-chat-message.user {
+  margin-left: auto;
+  background: #34344b;
+}
+
+.dubai-chat-message.assistant {
+  background: #20202c;
+}
+
+#dubai-chat-form {
+  padding-top: 10px;
+  border-top: 1px solid #2c2c3b;
+}
+
+#dubai-chat-question {
+  width: 100%;
+  padding: 9px;
+  border: 1px solid #3a3a4f;
+  border-radius: 8px;
+  outline: none;
+  resize: none;
+  background: #1d1d29;
+  color: #fff;
+  font: 13px/1.4 'Segoe UI', Roboto, Arial, sans-serif;
+}
+
+#dubai-chat-question:focus {
+  border-color: #647dba;
+}
+
+.dubai-chat-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 7px;
+}
+
+#dubai-clear-chat {
+  padding: 7px 10px;
+  border: 1px solid #3a3a4f;
+  border-radius: 8px;
+  background: transparent;
+  color: #aeb2c2;
+  cursor: pointer;
+}
+
 #dubai-caption-wrap {
   display: none;
   position: fixed;

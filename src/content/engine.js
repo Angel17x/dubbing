@@ -20,6 +20,7 @@ window.DubAI = window.DubAI || {};
     _resumeAfterBuffer: false,
     _initialBufferResolve: null,
     _runId: 0,
+    videoMeta: null,
 
     async toggle() {
       if (this.state === 'idle' || this.state === 'stopped' || this.state === 'error') return this.start();
@@ -41,6 +42,7 @@ window.DubAI = window.DubAI || {};
         if (stale()) return;
         this.video = video;
         this.video.volume = D.clamp(Number(this.settings.videoVolume ?? 1), 0, 1);
+        this.videoMeta = { mediaKey, title: document.title, url: location.href };
 
         const extractor = D.subtitles[D.currentSite()] || D.subtitles.generic;
         D.overlay.setStatus('Extrayendo subtítulos…');
@@ -132,6 +134,7 @@ window.DubAI = window.DubAI || {};
         if (!src) src = this.settings.translatorBackend === 'ollama' ? 'auto' : 'en';
       }
       D.log(`idioma origen: ${src} → ${tgt}, ${cues.length} cues`);
+      this.videoMeta = Object.assign({}, this.videoMeta, { videoId, sourceLang: src, targetLang: tgt });
 
       this.cues = cues.map((c, i) => ({ ...c, i, es: null }));
       // Si DubAI se activa a mitad del video, no intentar hablar ni esperar
@@ -166,6 +169,10 @@ window.DubAI = window.DubAI || {};
         this.translationDone = true;
         D.overlay.setStatus('Traducción desde caché ✔');
         D.overlay.setProgress(1);
+        D.videoKnowledge
+          .captureEngine(this, 'subtitles')
+          .then(() => D.assistantPanel && D.assistantPanel.refresh())
+          .catch((e) => D.warn('No se pudo guardar la transcripción', e));
         return;
       }
 
@@ -230,6 +237,10 @@ window.DubAI = window.DubAI || {};
         }
         this.translationDone = true;
         D.overlay.setStatus('Traducción completa ✔');
+        D.videoKnowledge
+          .captureEngine(this, 'subtitles')
+          .then(() => D.assistantPanel && D.assistantPanel.refresh())
+          .catch((e) => D.warn('No se pudo guardar la transcripción', e));
         try {
           await chrome.storage.local.set({ [cacheKey]: cues.map((c) => c.es) });
         } catch (e) {}
@@ -266,7 +277,7 @@ window.DubAI = window.DubAI || {};
         play: () => this.tick(),
         seeked: () => this.onSeek(),
         ratechange: () => this.onRateChange(),
-        ended: () => this.onPause()
+        ended: () => this.onEnded()
       };
       for (const [ev, fn] of Object.entries(this._bound)) v.addEventListener(ev, fn);
       this.timer = setInterval(() => this.tick(), 200);
@@ -387,6 +398,13 @@ window.DubAI = window.DubAI || {};
       if (this.state === 'whisper') {
         this.whisper.epoch++;
         D.overlay.setStatus('Whisper pausado con el video');
+        chrome.runtime
+          .sendMessage({
+            type: 'DUBAI_WHISPER_CLOCK',
+            paused: true,
+            currentTime: this.video ? this.video.currentTime : 0
+          })
+          .catch(() => {});
       }
       // Guardar la frase antes de cancelar: cancel() dispara onend y puede
       // limpiar currentCue sin darnos oportunidad de repetirla al reanudar.
@@ -422,6 +440,18 @@ window.DubAI = window.DubAI || {};
       this.tick();
     },
 
+    async onEnded() {
+      this.onPause();
+      try {
+        await D.videoKnowledge.captureEngine(this, this.whisper.active ? 'whisper' : 'subtitles');
+        if (this.settings && this.settings.autoSummary && D.assistantPanel) {
+          D.assistantPanel.generateSummary(true);
+        }
+      } catch (e) {
+        D.warn('No se pudo finalizar el conocimiento del video', e);
+      }
+    },
+
     restoreVolume() {
       if (this.video && this.duckCount > 0) {
         try {
@@ -452,8 +482,21 @@ window.DubAI = window.DubAI || {};
       this.whisper.active = true;
       this.whisper.epoch++;
       this.whisper.queue = Promise.resolve();
+      this.whisper.segments = [];
+      this.videoMeta = {
+        mediaKey: D.mediaKey(),
+        videoId: D.mediaKey(),
+        title: document.title,
+        url: location.href,
+        sourceLang: this.settings.sourceLang || 'auto',
+        targetLang: this.settings.targetLang || 'es'
+      };
       D.overlay.setStatus('Iniciando Whisper local (la 1ª vez descarga el modelo)…');
-      const res = await chrome.runtime.sendMessage({ type: 'DUBAI_WHISPER_START', lang: this.settings.sourceLang });
+      const res = await chrome.runtime.sendMessage({
+        type: 'DUBAI_WHISPER_START',
+        lang: this.settings.sourceLang,
+        startOffset: this.video ? this.video.currentTime : 0
+      });
       if (!res || res.error) {
         this.state = 'error';
         this.whisper.active = false;
@@ -461,6 +504,11 @@ window.DubAI = window.DubAI || {};
         return;
       }
       this.attachWhisper();
+      if (this.video && this.video.paused) {
+        chrome.runtime
+          .sendMessage({ type: 'DUBAI_WHISPER_CLOCK', paused: true, currentTime: this.video.currentTime })
+          .catch(() => {});
+      }
       D.overlay.setStatus('Whisper escuchando y doblando…');
     },
 
@@ -468,10 +516,21 @@ window.DubAI = window.DubAI || {};
       const v = this.video;
       this._bound = {
         pause: () => this.onPause(),
-        play: () => D.overlay.setStatus('Whisper escuchando y doblando…'),
-        ended: () => this.onPause()
+        play: () => this.onWhisperPlay(),
+        ended: () => this.onEnded()
       };
       for (const [ev, fn] of Object.entries(this._bound)) v.addEventListener(ev, fn);
+    },
+
+    onWhisperPlay() {
+      chrome.runtime
+        .sendMessage({
+          type: 'DUBAI_WHISPER_CLOCK',
+          paused: false,
+          currentTime: this.video ? this.video.currentTime : 0
+        })
+        .catch(() => {});
+      D.overlay.setStatus('Whisper escuchando y doblando…');
     },
 
     onWhisperSegment(seg) {
@@ -505,6 +564,12 @@ window.DubAI = window.DubAI || {};
       // La traducción puede terminar después de que el usuario haya pausado.
       // En ese caso se descarta para que nunca hable sobre el video detenido.
       if (!valid() || !text) return;
+      this.whisper.segments.push({
+        start: Number(seg.start) || 0,
+        end: (Number(seg.start) || 0) + 5,
+        text: seg.text,
+        es: text
+      });
       D.overlay.setCaption(this.settings.showSubs ? text : '', seg.text);
       await new Promise((resolve) => {
         D.tts.speak(text, {
@@ -588,6 +653,11 @@ window.DubAI = window.DubAI || {};
     async stop() {
       this._runId++;
       this.state = 'stopped';
+      try {
+        await D.videoKnowledge.captureEngine(this, this.whisper.active ? 'whisper' : 'subtitles');
+      } catch (e) {
+        D.warn('No se pudo guardar el progreso del video', e);
+      }
       this._autoPaused = false;
       this._resumeAfterBuffer = false;
       if (this._initialBufferResolve) this._initialBufferResolve();

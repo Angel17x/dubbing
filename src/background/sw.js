@@ -164,6 +164,181 @@ async function ollamaTranslate(msg, target) {
   return { translations: out };
 }
 
+async function ollamaAssistantRequest(url, model, messages, options = {}) {
+  url = String(url || 'http://localhost:11434').replace(/\/+$/, '');
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 180000);
+  try {
+    const response = await fetch(`${url}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: model || 'llama3.1:8b',
+        stream: false,
+        keep_alive: '10m',
+        options: {
+          temperature: options.temperature == null ? 0.2 : options.temperature,
+          num_ctx: 4096,
+          num_predict: options.numPredict || 1000
+        },
+        messages
+      })
+    });
+    if (!response.ok) {
+      const detail = await response.text().catch(() => '');
+      throw new Error(`Ollama HTTP ${response.status}: ${detail.slice(0, 250)}`);
+    }
+    const json = await response.json();
+    const content = json && json.message && json.message.content;
+    if (!content || !String(content).trim()) throw new Error('Ollama devolvió una respuesta vacía');
+    return String(content).trim();
+  } catch (error) {
+    if (error && error.name === 'AbortError') throw new Error('Ollama tardó demasiado (timeout 180s)');
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function assistantProgress(target, status) {
+  if (!target || target.tabId == null) return;
+  const opts = target.frameId != null ? { frameId: target.frameId } : undefined;
+  chrome.tabs.sendMessage(target.tabId, { type: 'DUBAI_ASSISTANT_PROGRESS', status }, opts).catch(() => {});
+}
+
+function groupTexts(texts, maxChars) {
+  const groups = [];
+  let current = '';
+  for (const value of texts || []) {
+    const text = String(value || '').trim();
+    if (!text) continue;
+    if (current && current.length + text.length + 2 > maxChars) {
+      groups.push(current);
+      current = '';
+    }
+    current += (current ? '\n\n' : '') + text;
+  }
+  if (current) groups.push(current);
+  return groups;
+}
+
+function groupTranscriptChunks(chunks, maxChars = 6500) {
+  return groupTexts(
+    (chunks || []).map((chunk) => chunk && chunk.text),
+    maxChars
+  );
+}
+
+async function ollamaSummarize(msg, target) {
+  const groups = groupTranscriptChunks(msg.chunks);
+  if (!groups.length) throw new Error('No hay transcripción suficiente para resumir');
+  const partials = [];
+  for (let i = 0; i < groups.length; i++) {
+    assistantProgress(target, `Analizando bloque ${i + 1}/${groups.length}…`);
+    partials.push(
+      await ollamaAssistantRequest(
+        msg.url,
+        msg.model,
+        [
+          {
+            role: 'system',
+            content:
+              'Resume fielmente este fragmento de un video educativo en español. No inventes información. ' +
+              'Conserva comandos, nombres técnicos, cifras y marcas de tiempo. Devuelve puntos claros y concisos.'
+          },
+          { role: 'user', content: groups[i] }
+        ],
+        { temperature: 0.1, numPredict: 700 }
+      )
+    );
+  }
+  assistantProgress(target, 'Construyendo resumen final…');
+  let layer = partials;
+  let round = 1;
+  while (layer.join('\n\n').length > 10000 && layer.length > 1 && round <= 4) {
+    const batches = groupTexts(layer, 8000);
+    const next = [];
+    for (let i = 0; i < batches.length; i++) {
+      assistantProgress(target, `Consolidando resumen ${round}.${i + 1}/${batches.length}…`);
+      next.push(
+        await ollamaAssistantRequest(
+          msg.url,
+          msg.model,
+          [
+            {
+              role: 'system',
+              content:
+                'Consolida estos resúmenes parciales sin perder ideas, comandos ni referencias de tiempo. ' +
+                'No añadas información externa y responde en español.'
+            },
+            { role: 'user', content: batches[i] }
+          ],
+          { temperature: 0.1, numPredict: 900 }
+        )
+      );
+    }
+    layer = next;
+    round++;
+  }
+  const combined = layer.map((text, index) => `PARTE ${index + 1}\n${text}`).join('\n\n').slice(0, 12000);
+  return ollamaAssistantRequest(
+    msg.url,
+    msg.model,
+    [
+      {
+        role: 'system',
+        content:
+          'Crea un resumen final en español usando exclusivamente los resúmenes parciales proporcionados. ' +
+          'Estructura la respuesta con: Resumen general, Ideas principales, Conceptos y comandos técnicos, y Conclusiones. ' +
+          'Incluye referencias de tiempo [MM:SS] o [HH:MM:SS] cuando existan. No inventes detalles.'
+      },
+      { role: 'user', content: combined }
+    ],
+    { temperature: 0.1, numPredict: 1400 }
+  );
+}
+
+async function ollamaAsk(msg) {
+  const context = (msg.context || [])
+    .map((chunk) => String((chunk && chunk.text) || ''))
+    .join('\n\n')
+    .slice(0, 12000);
+  if (!context) throw new Error('No hay contexto del video para responder');
+  const history = (msg.history || [])
+    .slice(-6)
+    .map((item) => ({
+      role: item.role === 'assistant' ? 'assistant' : 'user',
+      content: String(item.content || '').slice(0, 1200)
+    }));
+  const answer = await ollamaAssistantRequest(
+    msg.url,
+    msg.model,
+    [
+      {
+        role: 'system',
+        content:
+          'Eres el asistente de un video educativo. Responde en español. Primero usa la transcripción y titula esa sección "Según el video". ' +
+          'Toda respuesta basada en el video DEBE incluir al menos una marca de tiempo exacta [MM:SS] o [HH:MM:SS] copiada del contexto. ' +
+          'Coloca la referencia junto a la afirmación correspondiente. Si la respuesta no está en el video, dilo explícitamente. ' +
+          'Después puedes complementar con conocimiento general en una sección separada llamada "Información adicional". ' +
+          'Nunca presentes conocimiento adicional como si lo hubiera dicho el video.'
+      },
+      ...history,
+      {
+        role: 'user',
+        content: `TRANSCRIPCIÓN RELEVANTE:\n${context}\n\nPREGUNTA:\n${String(msg.question || '').slice(0, 1500)}`
+      }
+    ],
+    { temperature: 0.2, numPredict: 1100 }
+  );
+  if (!/\[\d{1,2}:\d{2}(?::\d{2})?\]/.test(answer)) {
+    const timestamp = context.match(/\[\d{1,2}:\d{2}(?::\d{2})?\]/);
+    if (timestamp) return `${answer}\n\nReferencia del contexto: ${timestamp[0]}`;
+  }
+  return answer;
+}
+
 function arrayBufferToBase64(buffer) {
   const bytes = new Uint8Array(buffer);
   let binary = '';
@@ -223,6 +398,17 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         case 'DUBAI_OLLAMA_TRANSLATE': {
           const target = sender.tab ? { tabId: sender.tab.id, frameId: sender.frameId } : null;
           sendResponse(await ollamaTranslate(msg, target));
+          return;
+        }
+
+        case 'DUBAI_OLLAMA_SUMMARIZE': {
+          const target = sender.tab ? { tabId: sender.tab.id, frameId: sender.frameId } : null;
+          sendResponse({ summary: await ollamaSummarize(msg, target) });
+          return;
+        }
+
+        case 'DUBAI_OLLAMA_ASK': {
+          sendResponse({ answer: await ollamaAsk(msg) });
           return;
         }
 
@@ -286,6 +472,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             type: 'WHISPER_START',
             streamId,
             lang: msg.lang,
+            startOffset: msg.startOffset || 0,
             tabId
           });
           sendResponse(res);
@@ -295,6 +482,19 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         case 'DUBAI_WHISPER_STOP': {
           if (await chrome.offscreen.hasDocument()) {
             await chrome.runtime.sendMessage({ target: 'offscreen', type: 'WHISPER_STOP' });
+          }
+          sendResponse({ ok: true });
+          return;
+        }
+
+        case 'DUBAI_WHISPER_CLOCK': {
+          if (await chrome.offscreen.hasDocument()) {
+            await chrome.runtime.sendMessage({
+              target: 'offscreen',
+              type: 'WHISPER_CLOCK',
+              paused: !!msg.paused,
+              currentTime: msg.currentTime || 0
+            });
           }
           sendResponse({ ok: true });
           return;

@@ -44,6 +44,7 @@ window.DubAI = window.DubAI || {};
     duck: true,
     duckLevel: 0.25,
     showSubs: true,
+    autoSummary: true,
     whisperFallback: false,
     translatorBackend: 'auto', // 'auto' | 'chrome' | 'offscreen' | 'ollama'
     ollamaUrl: 'http://localhost:11434',

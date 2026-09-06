@@ -8,11 +8,16 @@ window.DubAI = window.DubAI || {};
   let status = '';
   let progress = 0;
   let whisperOffered = false;
+  let assistantActive = false;
 
   const ICON =
     '<svg viewBox="0 0 24 24" width="100%" height="100%" fill="currentColor" aria-hidden="true">' +
     '<path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>' +
     '<path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>' +
+    '</svg>';
+  const CHAT_ICON =
+    '<svg viewBox="0 0 24 24" width="100%" height="100%" fill="currentColor" aria-hidden="true">' +
+    '<path d="M4 3h16c1.1 0 2 .9 2 2v11c0 1.1-.9 2-2 2H8l-5 4V5c0-1.1.9-2 2-2zm2 4v2h12V7H6zm0 4v2h8v-2H6z"/>' +
     '</svg>';
 
   function createButton(youtube) {
@@ -29,6 +34,25 @@ window.DubAI = window.DubAI || {};
     });
     updateButton(b);
     return b;
+  }
+
+  function createAssistantButton(youtube) {
+    const button = document.createElement('button');
+    button.className =
+      (youtube ? 'ytp-button ' : '') +
+      'dubai-player-btn dubai-assistant-btn' +
+      (youtube ? '' : ' dubai-generic-player-btn');
+    button.id = 'dubai-assistant-btn';
+    button.setAttribute('aria-label', 'DubAI: resumen y preguntas del video');
+    button.title = 'DubAI — Resumen y preguntas';
+    button.innerHTML = CHAT_ICON;
+    button.classList.toggle('dubai-on', assistantActive);
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      D.assistantPanel.toggle();
+    });
+    return button;
   }
 
   function updateButton(button = document.getElementById('dubai-player-btn')) {
@@ -65,7 +89,8 @@ window.DubAI = window.DubAI || {};
     if (!video) return;
     const controls = findGenericControls(video);
     if (controls) {
-      controls.appendChild(createButton(false));
+      if (!document.getElementById('dubai-player-btn')) controls.appendChild(createButton(false));
+      if (!document.getElementById('dubai-assistant-btn')) controls.appendChild(createAssistantButton(false));
       D.log('botón integrado en los controles del reproductor');
       return;
     }
@@ -77,18 +102,25 @@ window.DubAI = window.DubAI || {};
       video.parentElement;
     if (!container) return;
     if (getComputedStyle(container).position === 'static') container.classList.add('dubai-player-anchor');
-    const button = createButton(false);
-    button.classList.add('dubai-player-fallback');
-    container.appendChild(button);
+    if (!document.getElementById('dubai-player-btn')) {
+      const button = createButton(false);
+      button.classList.add('dubai-player-fallback');
+      container.appendChild(button);
+    }
+    if (!document.getElementById('dubai-assistant-btn')) {
+      const assistant = createAssistantButton(false);
+      assistant.classList.add('dubai-player-fallback', 'dubai-assistant-fallback');
+      container.appendChild(assistant);
+    }
     D.log('botón anclado a la barra inferior del video');
   }
 
   function doInject() {
-    if (document.getElementById('dubai-player-btn')) return;
     if (D.currentSite() === 'youtube') {
       const controls = document.querySelector('.ytp-right-controls');
       if (!controls) return;
-      controls.prepend(createButton(true));
+      if (!document.getElementById('dubai-assistant-btn')) controls.prepend(createAssistantButton(true));
+      if (!document.getElementById('dubai-player-btn')) controls.prepend(createButton(true));
       D.log('botón integrado en la barra de YouTube');
     } else {
       injectGeneric();
@@ -106,7 +138,7 @@ window.DubAI = window.DubAI || {};
           scheduled = true;
           setTimeout(() => {
             scheduled = false;
-            if (!document.getElementById('dubai-player-btn')) doInject();
+            if (!document.getElementById('dubai-player-btn') || !document.getElementById('dubai-assistant-btn')) doInject();
           }, 400);
         });
         observer.observe(document.documentElement, { childList: true, subtree: true });
@@ -131,6 +163,12 @@ window.DubAI = window.DubAI || {};
     showWhisperOption(on) {
       whisperOffered = !!on;
       updateButton();
+    },
+
+    setAssistantActive(on) {
+      assistantActive = !!on;
+      const button = document.getElementById('dubai-assistant-btn');
+      if (button) button.classList.toggle('dubai-on', assistantActive);
     }
   };
 

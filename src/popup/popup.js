@@ -14,7 +14,8 @@
 
   const DEFAULTS = {
     targetLang: 'es', sourceLang: 'auto', voiceURI: '', rate: 1.0,
-    videoVolume: 1.0, duck: true, duckLevel: 0.25, showSubs: true, whisperFallback: false, translatorBackend: 'auto',
+    videoVolume: 1.0, duck: true, duckLevel: 0.25, showSubs: true, autoSummary: true,
+    whisperFallback: false, translatorBackend: 'auto',
     ollamaUrl: 'http://localhost:11434', ollamaModel: 'llama3.1:8b',
     ollamaModelUpgradeV1: false,
     voiceBackend: 'xtts', xttsUrl: 'http://127.0.0.1:8020',
@@ -54,6 +55,7 @@
       duck: $('duck').checked,
       duckLevel: parseFloat($('duckLevel').value),
       showSubs: $('showSubs').checked,
+      autoSummary: $('autoSummary').checked,
       whisperFallback: $('whisperFallback').checked,
       translatorBackend: $('translatorBackend').value,
       ollamaUrl: $('ollamaUrl').value.trim() || 'http://localhost:11434',
@@ -168,6 +170,15 @@
     await loadMemory();
   }
 
+  async function clearVideoKnowledge() {
+    if (!confirm('¿Borrar todas las transcripciones, resúmenes y conversaciones guardadas?')) return;
+    const indexKey = 'dubai:knowledge:index:v1';
+    const stored = await chrome.storage.local.get(indexKey);
+    const index = Array.isArray(stored[indexKey]) ? stored[indexKey] : [];
+    await chrome.storage.local.remove(index.map((item) => item.key).concat(indexKey));
+    $('assistantStatus').textContent = 'Historial del asistente eliminado ✔';
+  }
+
   async function refreshState() {
     const badge = $('state');
     const btn = $('toggle');
@@ -218,6 +229,7 @@
     $('duck').checked = settings.duck;
     $('duckLevel').value = settings.duckLevel;
     $('showSubs').checked = settings.showSubs;
+    $('autoSummary').checked = settings.autoSummary;
     $('whisperFallback').checked = settings.whisperFallback;
     $('translatorBackend').value = settings.translatorBackend;
     $('ollamaUrl').value = settings.ollamaUrl;
@@ -242,7 +254,7 @@
       setTimeout(refreshState, 400);
     });
 
-    for (const id of ['targetLang', 'sourceLang', 'voice', 'voiceBackend', 'xttsUrl', 'xttsReference', 'rate', 'videoVolume', 'duck', 'duckLevel', 'showSubs', 'whisperFallback', 'translatorBackend', 'ollamaUrl', 'ollamaModel']) {
+    for (const id of ['targetLang', 'sourceLang', 'voice', 'voiceBackend', 'xttsUrl', 'xttsReference', 'rate', 'videoVolume', 'duck', 'duckLevel', 'showSubs', 'autoSummary', 'whisperFallback', 'translatorBackend', 'ollamaUrl', 'ollamaModel']) {
       $(id).addEventListener('change', () => {
         if (id === 'targetLang') fillVoices($('targetLang').value);
         if (id === 'translatorBackend') toggleOllamaCfg();
@@ -256,6 +268,7 @@
     $('testXtts').addEventListener('click', testXtts);
     $('saveGlossary').addEventListener('click', saveGlossary);
     $('clearCorrections').addEventListener('click', clearCorrections);
+    $('clearVideoKnowledge').addEventListener('click', clearVideoKnowledge);
 
     $('hint').textContent =
       'Funciona en YouTube, Udemy, Coursera, Vimeo, Bilibili, LinkedIn Learning, edX y más. Traducción 100% local (Chrome, transformers.js u Ollama).';
