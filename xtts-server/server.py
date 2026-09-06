@@ -13,10 +13,13 @@ from pydantic import BaseModel, Field
 os.environ.setdefault("COQUI_TOS_AGREED", "1")
 
 MODEL_NAME = "tts_models/multilingual/multi-dataset/xtts_v2"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_REFERENCE = Path(
     os.environ.get(
         "DUBAI_VOICE_REFERENCE",
-        r"C:\Users\PC\Downloads\ElevenLabs_2026-09-06T02_00_43_Roger - Laid-Back, Casual, Resonant_pre_sp100_s50_sb75_se0_b_m2.mp3",
+        PROJECT_ROOT
+        / "example_voices"
+        / "ElevenLabs_2026-09-06T02_00_43_Roger - Laid-Back, Casual, Resonant_pre_sp100_s50_sb75_se0_b_m2.mp3",
     )
 )
 

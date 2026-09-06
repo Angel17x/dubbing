@@ -262,6 +262,7 @@ window.DubAI = window.DubAI || {};
       const v = this.video;
       this._bound = {
         pause: () => this.onPause(),
+        play: () => this.tick(),
         seeked: () => this.onSeek(),
         ratechange: () => {},
         ended: () => this.onPause()
@@ -385,11 +386,14 @@ window.DubAI = window.DubAI || {};
         this.whisper.epoch++;
         D.overlay.setStatus('Whisper pausado con el video');
       }
+      // Guardar la frase antes de cancelar: cancel() dispara onend y puede
+      // limpiar currentCue sin darnos oportunidad de repetirla al reanudar.
+      const interruptedCue = this.currentCue;
       D.tts.cancel();
       this.restoreVolume();
       // Al reanudar, repetir el cue que quedó a medias
-      if (this.currentCue) {
-        this.spoken.delete(this.currentCue.i);
+      if (interruptedCue) {
+        this.spoken.delete(interruptedCue.i);
         this.currentCue = null;
       }
     },

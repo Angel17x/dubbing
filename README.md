@@ -117,7 +117,7 @@ La muestra se guarda en `xtts-server/test-roger.wav`.
 5. Después de cualquier actualización, pulsa **Recargar** en DubAI.
 6. Recarga las pestañas de video con `Ctrl+F5`.
 
-La versión actual es `0.3.2`.
+La versión actual es `0.4.0`.
 
 ## Configuración recomendada
 
@@ -133,10 +133,13 @@ Abre el popup de DubAI y configura:
 - **Audio de referencia:**
 
 ```text
-C:\Users\PC\Downloads\ElevenLabs_2026-09-06T02_00_43_Roger - Laid-Back, Casual, Resonant_pre_sp100_s50_sb75_se0_b_m2.mp3
+example_voices\ElevenLabs_2026-09-06T02_00_43_Roger - Laid-Back, Casual, Resonant_pre_sp100_s50_sb75_se0_b_m2.mp3
 ```
 
-Pulsa **Probar conexión** para Ollama y **Probar servidor XTTS** para la voz.
+El servidor usa esa muestra automáticamente cuando el campo queda vacío. Hay
+cuatro opciones incluidas en `example_voices`; para escoger otra, escribe su
+ruta absoluta. Pulsa **Probar conexión** para Ollama y **Probar servidor XTTS**
+para la voz.
 
 ### Memoria de traducción
 
@@ -158,12 +161,16 @@ mientras el resto se expresa en español natural.
 1. Inicia Ollama y XTTS.
 2. Abre un video compatible.
 3. Espera a que el reproductor y sus subtítulos terminen de cargar.
-4. Pulsa el botón de DubAI en el reproductor o desde el popup.
+4. Pulsa el micrófono de DubAI integrado en la barra inferior del reproductor,
+   o actívalo desde el popup.
 5. Reproduce el video.
 
 Al pausar el video, la voz también se detiene. Al reanudar, DubAI continúa desde
 la frase correspondiente. Al adelantar o retroceder, cancela la voz anterior y
 recalcula la posición.
+
+El botón flotante fue retirado. En YouTube se inserta en sus controles nativos;
+en Udemy y otros reproductores HTML5 se acopla a la barra inferior disponible.
 
 Si una frase tarda más que su intervalo, DubAI puede pausar brevemente el video
 para evitar acelerar demasiado la voz o superponer frases.

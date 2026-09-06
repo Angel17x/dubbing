@@ -18,7 +18,7 @@
     ollamaUrl: 'http://localhost:11434', ollamaModel: 'llama3.1:8b',
     ollamaModelUpgradeV1: false,
     voiceBackend: 'xtts', xttsUrl: 'http://127.0.0.1:8020',
-    xttsReference: 'C:\\Users\\PC\\Downloads\\ElevenLabs_2026-09-06T02_00_43_Roger - Laid-Back, Casual, Resonant_pre_sp100_s50_sb75_se0_b_m2.mp3'
+    xttsReference: ''
   };
 
   const $ = (id) => document.getElementById(id);

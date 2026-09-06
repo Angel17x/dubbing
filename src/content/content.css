@@ -3,63 +3,7 @@
   all: initial;
 }
 
-#dubai-panel {
-  position: fixed;
-  right: 18px;
-  bottom: 90px;
-  z-index: 2147483646;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 6px;
-  font-family: 'Segoe UI', Roboto, Arial, sans-serif;
-}
-
-#dubai-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  border: none;
-  border-radius: 999px;
-  background: rgba(20, 20, 28, 0.92);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
-  transition: transform 0.15s ease, background 0.2s ease;
-}
-
-#dubai-toggle:hover {
-  transform: scale(1.05);
-}
-
-#dubai-toggle.active {
-  background: #c4302b;
-}
-
-#dubai-whisper {
-  display: none;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 12px;
-  border: 1px solid #6a5acd;
-  border-radius: 999px;
-  background: rgba(48, 38, 90, 0.95);
-  color: #d8ccff;
-  font-size: 12.5px;
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
-  font-family: 'Segoe UI', Roboto, Arial, sans-serif;
-}
-
-#dubai-whisper:hover {
-  background: rgba(66, 52, 122, 0.95);
-}
-
-/* Botón integrado en la barra del reproductor de YouTube */
+/* Botón integrado en la barra del reproductor */
 .dubai-player-btn {
   position: relative;
   color: #eee !important; /* YouTube estiliza con fill, no con color: forzamos ambos */
@@ -92,33 +36,49 @@
   background: #ff4e45;
 }
 
-#dubai-info {
-  max-width: 260px;
-  padding: 6px 10px;
-  border-radius: 8px;
-  background: rgba(20, 20, 28, 0.85);
-  color: #cfd2dc;
-  font-size: 12px;
-  text-align: right;
+.dubai-player-btn.dubai-whisper-ready {
+  color: #a890ff !important;
+  fill: #a890ff !important;
 }
 
-#dubai-status:empty {
-  display: none;
+.dubai-generic-player-btn {
+  position: relative;
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  padding: 7px;
+  border: 0;
+  background: transparent;
+  color: #eee !important;
+  fill: #eee !important;
+  cursor: pointer;
+  z-index: 20;
 }
 
-#dubai-bar {
-  height: 4px;
-  margin-top: 5px;
+.dubai-generic-player-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 5px;
+}
+
+.dubai-generic-player-btn::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  width: var(--dubai-progress, 0%);
+  bottom: 2px;
+  height: 2px;
   border-radius: 2px;
-  background: rgba(255, 255, 255, 0.15);
-  overflow: hidden;
+  background: #4da3ff;
 }
 
-#dubai-bar-fill {
-  height: 100%;
-  width: 0;
-  background: #4da3ff;
-  transition: width 0.25s ease;
+.dubai-player-anchor {
+  position: relative !important;
+}
+
+.dubai-player-fallback {
+  position: absolute;
+  right: 48px;
+  bottom: 4px;
 }
 
 #dubai-caption-wrap {

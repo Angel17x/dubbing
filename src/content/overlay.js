@@ -3,7 +3,7 @@ window.DubAI = window.DubAI || {};
 (function (D) {
   'use strict';
 
-  let root, btn, status, barFill, capWrap, capBox, correctBtn, whisperBtn;
+  let root, capWrap, capBox, correctBtn;
   let correctionSource = '';
   let correctionText = '';
 
@@ -13,30 +13,16 @@ window.DubAI = window.DubAI || {};
       root = document.createElement('div');
       root.id = 'dubai-root';
       root.innerHTML = `
-        <div id="dubai-panel">
-          <button id="dubai-toggle" title="Activar / detener doblaje IA">🎙️ <span>DubAI</span></button>
-          <button id="dubai-whisper" title="Transcribir el audio con Whisper local y doblar">✨ Doblar con Whisper</button>
-          <div id="dubai-info">
-            <div id="dubai-status"></div>
-            <div id="dubai-bar"><div id="dubai-bar-fill"></div></div>
-          </div>
-        </div>
         <div id="dubai-caption-wrap">
           <div id="dubai-captions"></div>
           <button id="dubai-correct" title="Corregir y enseñar esta traducción">✏️</button>
         </div>`;
       document.documentElement.appendChild(root);
 
-      btn = root.querySelector('#dubai-toggle');
-      status = root.querySelector('#dubai-status');
-      barFill = root.querySelector('#dubai-bar-fill');
       capWrap = root.querySelector('#dubai-caption-wrap');
       capBox = root.querySelector('#dubai-captions');
       correctBtn = root.querySelector('#dubai-correct');
-      whisperBtn = root.querySelector('#dubai-whisper');
 
-      btn.addEventListener('click', () => D.engine.toggle());
-      whisperBtn.addEventListener('click', () => D.engine.enableWhisperAndStart());
       correctBtn.addEventListener('click', () => {
         if (!correctionSource || !correctionText) return;
         const corrected = prompt('Corrige la traducción. DubAI la recordará localmente:', correctionText);
@@ -47,10 +33,10 @@ window.DubAI = window.DubAI || {};
     },
 
     setStatus(t) {
-      if (status) status.textContent = t || '';
+      if (D.playerButton) D.playerButton.setStatus(t || '');
     },
     setProgress(f) {
-      if (barFill) barFill.style.width = `${Math.round(D.clamp(f || 0, 0, 1) * 100)}%`;
+      if (D.playerButton) D.playerButton.setProgress(f || 0);
     },
     setCaption(t, source = '') {
       if (capBox) {
@@ -62,11 +48,10 @@ window.DubAI = window.DubAI || {};
       }
     },
     setActive(on) {
-      if (btn) btn.classList.toggle('active', !!on);
       if (D.playerButton) D.playerButton.setActive(on);
     },
     showWhisperOption(on) {
-      if (whisperBtn) whisperBtn.style.display = on ? 'inline-flex' : 'none';
+      if (D.playerButton) D.playerButton.showWhisperOption(on);
     }
   };
 

@@ -2,7 +2,7 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $python = Join-Path $root 'xtts-server\.venv\Scripts\python.exe'
 $server = Join-Path $root 'xtts-server\server.py'
-$reference = 'C:\Users\PC\Downloads\ElevenLabs_2026-09-06T02_00_43_Roger - Laid-Back, Casual, Resonant_pre_sp100_s50_sb75_se0_b_m2.mp3'
+$reference = Join-Path $root 'example_voices\ElevenLabs_2026-09-06T02_00_43_Roger - Laid-Back, Casual, Resonant_pre_sp100_s50_sb75_se0_b_m2.mp3'
 
 if (-not (Test-Path $python)) {
   throw 'No existe el entorno XTTS. Ejecuta la instalación primero.'
