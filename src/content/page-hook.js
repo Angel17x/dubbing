@@ -1,6 +1,8 @@
 // DubAI — hook inyectado en el contexto de la página de YouTube (acceso a ytInitialPlayerResponse)
 (function () {
   'use strict';
+  if (window.__DUBAI_YOUTUBE_HOOK__) return;
+  window.__DUBAI_YOUTUBE_HOOK__ = true;
 
   function getPlayer() {
     return document.getElementById('movie_player') || document.querySelector('.html5-video-player');
@@ -40,6 +42,12 @@
         try {
           var tracklist = player.getOption('captions', 'tracklist');
           tracks = tracklist && (tracklist.captionTracks || tracklist);
+        } catch (e) {}
+        try {
+          if (!tracks || !tracks.length) {
+            var activeTrack = player.getOption('captions', 'track');
+            if (activeTrack && activeTrack.baseUrl) tracks = [activeTrack];
+          }
         } catch (e) {}
       }
 

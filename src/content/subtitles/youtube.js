@@ -11,15 +11,6 @@ window.DubAI = window.DubAI || {};
     return m ? m[2] : null;
   }
 
-  function injectHook() {
-    if (document.documentElement.hasAttribute('data-dubai-hook')) return;
-    document.documentElement.setAttribute('data-dubai-hook', '1');
-    const s = document.createElement('script');
-    s.src = chrome.runtime.getURL('src/content/page-hook.js');
-    s.onload = () => s.remove();
-    (document.head || document.documentElement).appendChild(s);
-  }
-
   // Pide los caption tracks al hook de página; si falla, descarga el HTML del watch y lo parsea
   function getCaptionTracks() {
     return new Promise((resolve) => {
@@ -41,7 +32,6 @@ window.DubAI = window.DubAI || {};
         if (ev.data.tracks && ev.data.tracks.length) finish(ev.data.tracks);
       }
       window.addEventListener('message', onMsg);
-      injectHook();
       const request = () => window.postMessage({ source: 'DUBAI_CONTENT', type: 'REQUEST_TRACKS' }, '*');
       setTimeout(request, 100);
       poll = setInterval(request, 500);
