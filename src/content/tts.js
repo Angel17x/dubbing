@@ -12,6 +12,9 @@ window.DubAI = window.DubAI || {};
     finish: null,
     cache: new Map(),
     inflight: new Map(),
+    prefetchQueue: [],
+    prefetchPending: new Map(),
+    prefetchActive: false,
 
     init() {
       const load = () => {
@@ -101,10 +104,11 @@ window.DubAI = window.DubAI || {};
       return `${lang}|${xttsReference}|${text}`;
     },
 
-    async _getXttsAudio(text, lang, xttsUrl, xttsReference) {
+    async _getXttsAudio(text, lang, xttsUrl, xttsReference, ignoreQueued = false) {
       const key = this._xttsKey(text, lang, xttsReference);
       if (this.cache.has(key)) return this.cache.get(key);
       if (this.inflight.has(key)) return this.inflight.get(key);
+      if (!ignoreQueued && this.prefetchPending.has(key)) return this.prefetchPending.get(key).promise;
 
       const request = chrome.runtime
         .sendMessage({
@@ -130,10 +134,63 @@ window.DubAI = window.DubAI || {};
 
     prefetch(text, { lang = 'es', backend = 'system', xttsUrl, xttsReference } = {}) {
       if (backend !== 'xtts' || !text) return Promise.resolve();
-      // XTTS procesa una síntesis por vez. No inundar el service worker y el
-      // servidor cuando una traducción completa llega desde caché.
-      if (this.inflight.size >= 2) return Promise.resolve();
-      return this._getXttsAudio(text, lang, xttsUrl, xttsReference).catch((e) => D.warn('XTTS prefetch falló', e));
+      const key = this._xttsKey(text, lang, xttsReference);
+      if (this.cache.has(key)) return Promise.resolve(this.cache.get(key));
+      if (this.inflight.has(key)) return this.inflight.get(key);
+      if (this.prefetchPending.has(key)) return this.prefetchPending.get(key).promise;
+      // El servidor XTTS sintetiza bajo un lock de GPU. Una cola local evita
+      // inundarlo y mantiene preparadas solo las próximas frases.
+      if (this.prefetchQueue.length >= 12) return Promise.resolve();
+      let resolve;
+      const promise = new Promise((done) => {
+        resolve = done;
+      });
+      const item = { key, text, lang, xttsUrl, xttsReference, promise, resolve };
+      this.prefetchPending.set(key, item);
+      this.prefetchQueue.push(item);
+      this._pumpPrefetch();
+      return promise;
+    },
+
+    async _pumpPrefetch() {
+      if (this.prefetchActive) return;
+      const item = this.prefetchQueue.shift();
+      if (!item) return;
+      this.prefetchActive = true;
+      try {
+        const audio = await this._getXttsAudio(
+          item.text,
+          item.lang,
+          item.xttsUrl,
+          item.xttsReference,
+          true
+        );
+        item.resolve(audio);
+      } catch (e) {
+        D.warn('XTTS prefetch falló', e);
+        item.resolve(null);
+      } finally {
+        this.prefetchPending.delete(item.key);
+        this.prefetchActive = false;
+        this._pumpPrefetch();
+      }
+    },
+
+    _promotePrefetch(text, lang, xttsReference) {
+      const key = this._xttsKey(text, lang, xttsReference);
+      const index = this.prefetchQueue.findIndex((item) => item.key === key);
+      if (index > 0) {
+        const [item] = this.prefetchQueue.splice(index, 1);
+        this.prefetchQueue.unshift(item);
+      }
+    },
+
+    clearPrefetch() {
+      for (const item of this.prefetchQueue) {
+        this.prefetchPending.delete(item.key);
+        item.resolve(null);
+      }
+      this.prefetchQueue = [];
     },
 
     async _speakXtts(text, { rate, lang, xttsUrl, xttsReference, onstart, onend }) {
@@ -153,6 +210,7 @@ window.DubAI = window.DubAI || {};
       this.finish = done;
 
       try {
+        this._promotePrefetch(text, lang, xttsReference);
         const res = await this._getXttsAudio(text, lang, xttsUrl, xttsReference);
         if (myToken !== this.token) return;
 

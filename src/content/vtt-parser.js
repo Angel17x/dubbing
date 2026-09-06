@@ -65,14 +65,16 @@ window.DubAI = window.DubAI || {};
       const start = (ev.tStartMs || 0) / 1000;
       const end = ((ev.tStartMs || 0) + (ev.dDurationMs || 0)) / 1000;
       if (isAsr) {
-        text = stripOverlap(prevText, text);
-        prevText = prevText ? prevText : text;
+        const fullText = text;
+        text = stripOverlap(prevText, fullText);
+        // Los captions automáticos son acumulativos: comparar siempre contra
+        // el bloque completo inmediatamente anterior, no contra el primero.
+        prevText = fullText;
         if (!text) {
           // cue vacío: solo extiende el anterior
           if (cues.length) cues[cues.length - 1].end = Math.max(cues[cues.length - 1].end, end);
           continue;
         }
-        prevText = text;
       }
       cues.push({ start, end, text });
     }

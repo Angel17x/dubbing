@@ -137,7 +137,7 @@ window.DubAI = window.DubAI || {};
           memoryRevision = (storedMemory.dubaiTranslationMemoryV1 || {}).updatedAt || 0;
         } catch (e) {}
       }
-      const cacheKey = `dubai:v5:${location.hostname}:${videoId}:${src}:${tgt}:${backend}:${model}:${memoryRevision}`;
+      const cacheKey = `dubai:v6:${location.hostname}:${videoId}:${src}:${tgt}:${backend}:${model}:${memoryRevision}`;
       let cached = null;
       try {
         const c = await chrome.storage.local.get(cacheKey);
@@ -185,9 +185,9 @@ window.DubAI = window.DubAI || {};
       try {
         for (let pos = 0; pos < total; ) {
           if (this.state === 'stopped' || this.state === 'idle' || this.cues !== cues) return;
-          // Seis frases iniciales aportan contexto y permiten doblar por delante
-          // del audio original; después se mantiene el mismo búfer progresivo.
-          const size = 6;
+          // Seis frases permiten arrancar pronto. Después, lotes mayores
+          // aprovechan mejor Ollama y mantienen traducción por delante del video.
+          const size = pos === 0 ? 6 : 12;
           const indices = order.slice(pos, pos + size);
           const batch = indices.map((i) => cues[i]);
           D.overlay.setStatus(
@@ -204,7 +204,7 @@ window.DubAI = window.DubAI || {};
           batch.forEach((c, k) => {
             c.es = tr[k] || c.text;
           });
-          const voicesReady = this.prefetchVoices(batch.slice(0, 3));
+          const voicesReady = this.prefetchVoices(batch.slice(0, pos === 0 ? 2 : 3));
           done += batch.length;
           pos += batch.length;
           if (pos === batch.length && this._initialBufferResolve) {
@@ -348,6 +348,7 @@ window.DubAI = window.DubAI || {};
           }
         }
       });
+      this.prefetchVoices(this.cues.slice(cue.i + 1, cue.i + 9));
     },
 
     duck(on) {
@@ -549,6 +550,7 @@ window.DubAI = window.DubAI || {};
       this._initialBufferResolve = null;
       this.detach();
       D.tts.cancel();
+      D.tts.clearPrefetch();
       this.currentCue = null;
       this.restoreVolume();
       if (this.whisper.active) {

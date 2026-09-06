@@ -62,7 +62,8 @@ async function ollamaChat(url, model, batch, src, tgt, memory = {}, extraInstruc
           'Conserva exactamente en inglés, con la misma escritura y sin explicaciones, las siglas y los nombres de comandos, herramientas, productos, APIs, SDKs, protocolos, rutas, código y opciones de terminal. ' +
           'Por ejemplo: CLI, API, SDK, Docker, Kubernetes, Linux, Git, GitHub, PowerShell, Bash, kubectl, nerdctl, containerd, npm, pip, SSH, HTTP, JSON, YAML y flags como --help. ' +
           'No traduzcas esos términos como palabras comunes; traduce de forma natural al español todo lo que los rodea. ' +
-          'Sin numeración, sin comentarios y sin markdown. Sé conciso porque el resultado se usará para doblaje. ' +
+          'No resumas, no omitas ideas, condiciones, cifras ni detalles técnicos. Conserva todo el significado y una longitud hablada proporcional al original. ' +
+          'Sin numeración, sin comentarios y sin markdown. Usa frases fluidas y directas porque el resultado se usará para doblaje. ' +
           memoryInstruction +
           extraInstruction
       },

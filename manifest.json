@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "DubAI — Doblaje IA en tiempo real",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Traduce y dobla videos de YouTube y Udemy en tiempo real con IA local: subtítulos, traducción on-device y voces TTS sincronizadas.",
   "permissions": ["storage", "offscreen", "tabCapture"],
   "host_permissions": [
