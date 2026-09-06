@@ -58,17 +58,25 @@ label.row {
 
 select,
 input[type='range'],
-input[type='text'] {
+input[type='text'],
+textarea {
   width: 100%;
 }
 
-input[type='text'] {
+input[type='text'],
+textarea {
   padding: 6px;
   border: 1px solid #33334a;
   border-radius: 6px;
   background: #1d1d29;
   color: #e8eaf2;
   font-size: 13px;
+}
+
+textarea {
+  resize: vertical;
+  font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+  line-height: 1.35;
 }
 
 .hidden {
@@ -95,6 +103,34 @@ input[type='text'] {
   display: none;
 }
 
+#memoryCfg {
+  padding: 9px;
+  border: 1px solid #33334a;
+  border-radius: 8px;
+  background: #191924;
+}
+
+#memoryCfg summary {
+  cursor: pointer;
+  color: #cfd2dc;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+#memoryCfg[open] summary {
+  margin-bottom: 8px;
+}
+
+.button-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 7px;
+}
+
+.button-row button {
+  flex: 1;
+}
+
 button.secondary {
   padding: 7px;
   border: 1px solid #44445e;
@@ -103,6 +139,10 @@ button.secondary {
   color: #cfd2dc;
   font-size: 12.5px;
   cursor: pointer;
+}
+
+button.secondary.danger {
+  color: #ff9b96;
 }
 
 button.secondary:hover {

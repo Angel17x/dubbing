@@ -130,7 +130,14 @@ window.DubAI = window.DubAI || {};
       // o texto original guardado por una versión previa.
       const backend = this.settings.translatorBackend || 'auto';
       const model = backend === 'ollama' ? this.settings.ollamaModel || 'llama3.1:8b' : '';
-      const cacheKey = `dubai:v4:${location.hostname}:${videoId}:${src}:${tgt}:${backend}:${model}`;
+      let memoryRevision = 0;
+      if (backend === 'ollama') {
+        try {
+          const storedMemory = await chrome.storage.local.get('dubaiTranslationMemoryV1');
+          memoryRevision = (storedMemory.dubaiTranslationMemoryV1 || {}).updatedAt || 0;
+        } catch (e) {}
+      }
+      const cacheKey = `dubai:v5:${location.hostname}:${videoId}:${src}:${tgt}:${backend}:${model}:${memoryRevision}`;
       let cached = null;
       try {
         const c = await chrome.storage.local.get(cacheKey);
@@ -281,7 +288,7 @@ window.DubAI = window.DubAI || {};
 
       // Subtítulo traducido en pantalla ('…' si aún no llega su traducción)
       const active = this.cues.find((c) => t >= c.start && t < c.end);
-      D.overlay.setCaption(this.settings.showSubs && active ? active.es || '…' : '');
+      D.overlay.setCaption(this.settings.showSubs && active ? active.es || '…' : '', active && active.es ? active.text : '');
 
       // No iniciar otra frase mientras el TTS sigue hablando. Si la voz no
       // cabe en su intervalo a una velocidad comprensible, congelar brevemente
@@ -466,7 +473,7 @@ window.DubAI = window.DubAI || {};
       // La traducción puede terminar después de que el usuario haya pausado.
       // En ese caso se descarta para que nunca hable sobre el video detenido.
       if (!valid() || !text) return;
-      D.overlay.setCaption(this.settings.showSubs ? text : '');
+      D.overlay.setCaption(this.settings.showSubs ? text : '', seg.text);
       await new Promise((resolve) => {
         D.tts.speak(text, {
           rate: D.clamp((this.settings.rate || 1) * 1.08, 0.75, 1.25),
@@ -482,6 +489,50 @@ window.DubAI = window.DubAI || {};
           }
         });
       });
+    },
+
+    async saveCorrection(source, target) {
+      source = String(source || '').trim();
+      target = String(target || '').trim();
+      if (!source || !target) return;
+      const key = 'dubaiTranslationMemoryV1';
+      const stored = await chrome.storage.local.get(key);
+      const memory = stored[key] || { glossary: [], corrections: [] };
+      const corrections = Array.isArray(memory.corrections) ? memory.corrections : [];
+      const src = (this.settings && this.settings.sourceLang) || 'auto';
+      const tgt = (this.settings && this.settings.targetLang) || 'es';
+      const normalized = source.toLocaleLowerCase();
+      const existing = corrections.find(
+        (item) => item && item.source && item.source.toLocaleLowerCase() === normalized && item.tgt === tgt
+      );
+      if (existing) {
+        existing.target = target;
+        existing.updatedAt = Date.now();
+        existing.uses = (existing.uses || 0) + 1;
+      } else {
+        corrections.push({
+          source,
+          target,
+          src,
+          tgt,
+          site: location.hostname,
+          uses: 1,
+          updatedAt: Date.now()
+        });
+      }
+      corrections.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+      await chrome.storage.local.set({
+        [key]: {
+          glossary: memory.glossary || [],
+          corrections: corrections.slice(0, 300),
+          updatedAt: Date.now()
+        }
+      });
+      for (const cue of this.cues) {
+        if (cue.text && cue.text.toLocaleLowerCase() === normalized) cue.es = target;
+      }
+      D.overlay.setCaption(target, source);
+      D.overlay.setStatus('Corrección aprendida localmente ✔');
     },
 
     onSettings(s) {

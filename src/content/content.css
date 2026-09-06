@@ -121,13 +121,19 @@
   transition: width 0.25s ease;
 }
 
-#dubai-captions {
+#dubai-caption-wrap {
   display: none;
   position: fixed;
   left: 50%;
   bottom: 11vh;
   transform: translateX(-50%);
   z-index: 2147483646;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+}
+
+#dubai-captions {
   max-width: 72vw;
   padding: 6px 14px;
   border-radius: 6px;
@@ -138,6 +144,22 @@
   line-height: 1.35;
   text-align: center;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
-  pointer-events: none;
   white-space: pre-line;
+}
+
+#dubai-correct {
+  display: none;
+  flex: 0 0 auto;
+  padding: 6px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  background: rgba(20, 20, 28, 0.9);
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+#dubai-correct:hover {
+  background: #c4302b;
 }

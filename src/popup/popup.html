@@ -94,6 +94,17 @@
       <p id="ollamaStatus" class="hint"></p>
     </div>
 
+    <details id="memoryCfg">
+      <summary>🧠 Memoria de traducción</summary>
+      <p class="hint">Una regla por línea: término original = forma preferida.</p>
+      <textarea id="glossary" rows="5" placeholder="kubectl = kubectl&#10;command line = línea de comandos"></textarea>
+      <div class="button-row">
+        <button id="saveGlossary" type="button" class="secondary">Guardar glosario</button>
+        <button id="clearCorrections" type="button" class="secondary danger">Borrar correcciones</button>
+      </div>
+      <p id="memoryStatus" class="hint"></p>
+    </details>
+
     <label class="row">
       <input type="checkbox" id="whisperFallback" />
       Modo Whisper si no hay subtítulos (experimental)

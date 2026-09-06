@@ -22,6 +22,7 @@
   };
 
   const $ = (id) => document.getElementById(id);
+  const MEMORY_KEY = 'dubaiTranslationMemoryV1';
   let settings = {};
   let activeTab = null;
 
@@ -119,6 +120,52 @@
     }
   }
 
+  async function loadMemory() {
+    const stored = await chrome.storage.local.get(MEMORY_KEY);
+    const memory = stored[MEMORY_KEY] || { glossary: [], corrections: [] };
+    $('glossary').value = (memory.glossary || [])
+      .map((entry) => `${entry.source} = ${entry.target || entry.source}`)
+      .join('\n');
+    $('memoryStatus').textContent = `${(memory.glossary || []).length} reglas · ${(memory.corrections || []).length} correcciones aprendidas`;
+    return memory;
+  }
+
+  async function saveGlossary() {
+    const stored = await chrome.storage.local.get(MEMORY_KEY);
+    const memory = stored[MEMORY_KEY] || { corrections: [] };
+    const glossary = $('glossary').value
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const separator = line.indexOf('=');
+        const source = (separator >= 0 ? line.slice(0, separator) : line).trim();
+        const target = (separator >= 0 ? line.slice(separator + 1) : line).trim() || source;
+        return { source, target };
+      })
+      .filter((entry) => entry.source)
+      .slice(0, 200);
+    await chrome.storage.local.set({
+      [MEMORY_KEY]: {
+        glossary,
+        corrections: memory.corrections || [],
+        updatedAt: Date.now()
+      }
+    });
+    await loadMemory();
+    $('memoryStatus').textContent += ' · ✔ guardado; reactiva el doblaje';
+  }
+
+  async function clearCorrections() {
+    if (!confirm('¿Borrar todas las correcciones aprendidas? El glosario se conservará.')) return;
+    const stored = await chrome.storage.local.get(MEMORY_KEY);
+    const memory = stored[MEMORY_KEY] || {};
+    await chrome.storage.local.set({
+      [MEMORY_KEY]: { glossary: memory.glossary || [], corrections: [], updatedAt: Date.now() }
+    });
+    await loadMemory();
+  }
+
   async function refreshState() {
     const badge = $('state');
     const btn = $('toggle');
@@ -178,6 +225,7 @@
 
     fillVoices(settings.targetLang);
     speechSynthesis.onvoiceschanged = () => fillVoices($('targetLang').value);
+    await loadMemory();
 
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     activeTab = tab;
@@ -202,6 +250,8 @@
 
     $('testOllama').addEventListener('click', testOllama);
     $('testXtts').addEventListener('click', testXtts);
+    $('saveGlossary').addEventListener('click', saveGlossary);
+    $('clearCorrections').addEventListener('click', clearCorrections);
 
     $('hint').textContent =
       'Funciona en YouTube, Udemy, Coursera, Vimeo, Bilibili, LinkedIn Learning, edX y más. Traducción 100% local (Chrome, transformers.js u Ollama).';

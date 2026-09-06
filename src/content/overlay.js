@@ -3,7 +3,9 @@ window.DubAI = window.DubAI || {};
 (function (D) {
   'use strict';
 
-  let root, btn, status, barFill, capBox, whisperBtn;
+  let root, btn, status, barFill, capWrap, capBox, correctBtn, whisperBtn;
+  let correctionSource = '';
+  let correctionText = '';
 
   const overlay = {
     create() {
@@ -19,17 +21,29 @@ window.DubAI = window.DubAI || {};
             <div id="dubai-bar"><div id="dubai-bar-fill"></div></div>
           </div>
         </div>
-        <div id="dubai-captions"></div>`;
+        <div id="dubai-caption-wrap">
+          <div id="dubai-captions"></div>
+          <button id="dubai-correct" title="Corregir y enseñar esta traducción">✏️</button>
+        </div>`;
       document.documentElement.appendChild(root);
 
       btn = root.querySelector('#dubai-toggle');
       status = root.querySelector('#dubai-status');
       barFill = root.querySelector('#dubai-bar-fill');
+      capWrap = root.querySelector('#dubai-caption-wrap');
       capBox = root.querySelector('#dubai-captions');
+      correctBtn = root.querySelector('#dubai-correct');
       whisperBtn = root.querySelector('#dubai-whisper');
 
       btn.addEventListener('click', () => D.engine.toggle());
       whisperBtn.addEventListener('click', () => D.engine.enableWhisperAndStart());
+      correctBtn.addEventListener('click', () => {
+        if (!correctionSource || !correctionText) return;
+        const corrected = prompt('Corrige la traducción. DubAI la recordará localmente:', correctionText);
+        if (corrected && corrected.trim() && corrected.trim() !== correctionText) {
+          D.engine.saveCorrection(correctionSource, corrected.trim());
+        }
+      });
     },
 
     setStatus(t) {
@@ -38,10 +52,13 @@ window.DubAI = window.DubAI || {};
     setProgress(f) {
       if (barFill) barFill.style.width = `${Math.round(D.clamp(f || 0, 0, 1) * 100)}%`;
     },
-    setCaption(t) {
+    setCaption(t, source = '') {
       if (capBox) {
         capBox.textContent = t || '';
-        capBox.style.display = t ? 'block' : 'none';
+        correctionText = t || '';
+        correctionSource = source || '';
+        if (capWrap) capWrap.style.display = t ? 'flex' : 'none';
+        if (correctBtn) correctBtn.style.display = t && source ? 'block' : 'none';
       }
     },
     setActive(on) {
