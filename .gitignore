@@ -5,6 +5,7 @@ xtts-server/.venv/
 
 # Salidas y registros locales
 xtts-server/*.log
+ollama.log
 xtts-server/test-*.wav
 *.tmp
 
