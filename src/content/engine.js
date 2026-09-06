@@ -397,10 +397,17 @@ window.DubAI = window.DubAI || {};
       if (!this.whisper.active || !seg || !seg.text) return;
       const tgt = this.settings.targetLang;
       let text = seg.text;
-      if (seg.lang && seg.lang !== tgt) {
+      let src = seg.lang || this.settings.sourceLang || 'auto';
+      if (src === 'auto' && this.settings.translatorBackend !== 'ollama') {
+        src = (await D.translator.detect(seg.text)) || 'en';
+      }
+      if (src !== tgt) {
         try {
-          [text] = await D.translator.translateAll([seg.text], seg.lang, tgt);
-        } catch (e) {}
+          D.overlay.setStatus('Whisper traduciendo segmento…');
+          [text] = await D.translator.translateAll([seg.text], src, tgt);
+        } catch (e) {
+          D.warn('No se pudo traducir segmento Whisper', e);
+        }
       }
       D.overlay.setCaption(this.settings.showSubs ? text : '');
       D.tts.speak(text, {

@@ -46,6 +46,10 @@
               D.engine.onWhisperSegment(msg.segment);
               sendResponse({ ok: true });
               break;
+            case 'DUBAI_WHISPER_STATUS':
+              if (D.engine.state === 'whisper') D.overlay.setStatus(msg.status || 'Whisper escuchando…');
+              sendResponse({ ok: true });
+              break;
             case 'DUBAI_PROGRESS':
               // Solo el frame que está traduciendo actualiza su overlay
               if (D.engine.state === 'loading') {

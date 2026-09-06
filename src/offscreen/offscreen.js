@@ -98,6 +98,7 @@ async function whisperStart({ streamId, lang, tabId }) {
   });
 
   const ctx = new AudioContext({ sampleRate: 16000 });
+  await ctx.resume();
   const source = ctx.createMediaStreamSource(stream);
   // La captura de pestaña silencia el audio local: lo re-enrutamos para que el usuario siga oyendo
   source.connect(ctx.destination);
@@ -108,11 +109,26 @@ async function whisperStart({ streamId, lang, tabId }) {
   let bufferedSec = 0;
   let busy = false;
   let chunkStart = 0;
+  let lastStatusAt = 0;
 
   processor.onaudioprocess = (ev) => {
     const data = ev.inputBuffer.getChannelData(0);
     buffer.push(new Float32Array(data));
-    bufferedSec += data.length / 16000;
+    bufferedSec += data.length / ctx.sampleRate;
+
+    if (performance.now() - lastStatusAt > 1000) {
+      lastStatusAt = performance.now();
+      let energy = 0;
+      for (let i = 0; i < data.length; i++) energy += data[i] * data[i];
+      const level = Math.sqrt(energy / Math.max(1, data.length));
+      chrome.runtime
+        .sendMessage({
+          type: 'DUBAI_WHISPER_STATUS_RELAY',
+          tabId,
+          status: level > 0.001 ? `Whisper recibiendo audio… ${bufferedSec.toFixed(1)}/${CHUNK_SEC}s` : 'Whisper esperando audio…'
+        })
+        .catch(() => {});
+    }
 
     if (bufferedSec >= CHUNK_SEC && !busy) {
       busy = true;
@@ -121,15 +137,23 @@ async function whisperStart({ streamId, lang, tabId }) {
       buffer = [];
       bufferedSec = 0;
       chunkStart += CHUNK_SEC;
-      transcribeChunk(audio, start, lang, tabId).finally(() => {
+      chrome.runtime
+        .sendMessage({ type: 'DUBAI_WHISPER_STATUS_RELAY', tabId, status: 'Whisper transcribiendo bloque…' })
+        .catch(() => {});
+      transcribeChunk(audio, ctx.sampleRate, start, lang, tabId).finally(() => {
         busy = false;
       });
     }
   };
 
   source.connect(processor);
-  processor.connect(ctx.createGain()); // mantener el grafo vivo sin duplicar audio
-  whisperSession = { ctx, stream, processor, tabId, lang };
+  // Un ScriptProcessor desconectado de una salida no es procesado por Chrome.
+  // Conectarlo a un gain silencioso mantiene el grafo activo sin duplicar audio.
+  const silent = ctx.createGain();
+  silent.gain.value = 0;
+  processor.connect(silent);
+  silent.connect(ctx.destination);
+  whisperSession = { ctx, stream, source, processor, silent, tabId, lang };
   return { ok: true };
 }
 
@@ -144,8 +168,24 @@ function concat(chunks) {
   return out;
 }
 
-async function transcribeChunk(audio, startSec, lang, tabId) {
+function resampleTo16k(input, sourceRate) {
+  if (sourceRate === 16000) return input;
+  const ratio = sourceRate / 16000;
+  const length = Math.round(input.length / ratio);
+  const output = new Float32Array(length);
+  for (let i = 0; i < length; i++) {
+    const pos = i * ratio;
+    const left = Math.floor(pos);
+    const right = Math.min(left + 1, input.length - 1);
+    const frac = pos - left;
+    output[i] = input[left] * (1 - frac) + input[right] * frac;
+  }
+  return output;
+}
+
+async function transcribeChunk(audio, sampleRate, startSec, lang, tabId) {
   try {
+    audio = resampleTo16k(audio, sampleRate);
     const opts = { chunk_length_s: 15, stride_length_s: 3, return_timestamps: false, task: 'transcribe' };
     if (lang && lang !== 'auto' && WHISPER_LANGS[lang]) opts.language = WHISPER_LANGS[lang];
     const r = await whisperPipe(audio, opts);
@@ -158,16 +198,29 @@ async function transcribeChunk(audio, startSec, lang, tabId) {
           segment: { start: startSec, text, lang: lang === 'auto' ? null : lang }
         })
         .catch(() => {});
+    } else {
+      chrome.runtime
+        .sendMessage({ type: 'DUBAI_WHISPER_STATUS_RELAY', tabId, status: 'Whisper no detectó voz en este bloque…' })
+        .catch(() => {});
     }
   } catch (e) {
     console.warn('[DubAI offscreen] whisper chunk error', e);
+    chrome.runtime
+      .sendMessage({
+        type: 'DUBAI_WHISPER_STATUS_RELAY',
+        tabId,
+        status: 'Whisper falló al transcribir: ' + ((e && e.message) || e)
+      })
+      .catch(() => {});
   }
 }
 
 async function whisperStop() {
   if (!whisperSession) return { ok: true };
   try {
+    whisperSession.source.disconnect();
     whisperSession.processor.disconnect();
+    whisperSession.silent.disconnect();
     whisperSession.ctx.close();
     for (const t of whisperSession.stream.getTracks()) t.stop();
   } catch (e) {}

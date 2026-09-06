@@ -295,6 +295,18 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           return;
         }
 
+        case 'DUBAI_WHISPER_STATUS_RELAY': {
+          if (msg.tabId != null) {
+            const opts =
+              whisperTarget && whisperTarget.tabId === msg.tabId && whisperTarget.frameId != null
+                ? { frameId: whisperTarget.frameId }
+                : undefined;
+            chrome.tabs.sendMessage(msg.tabId, { type: 'DUBAI_WHISPER_STATUS', status: msg.status }, opts).catch(() => {});
+          }
+          sendResponse({ ok: true });
+          return;
+        }
+
         default:
           sendResponse({ error: 'mensaje desconocido: ' + msg.type });
       }
