@@ -43,19 +43,27 @@ window.DubAI = window.DubAI || {};
 
         if (!data || !data.cues || !data.cues.length) {
           // Muchos players solo cargan las pistas al reproducir: reintenta una vez al dar ▶
-          D.overlay.setStatus('Sin subtítulos aún… pulsa ▶ en el video');
-          const played = await new Promise((resolve) => {
-            let settled = false;
-            const done = (v) => {
-              if (!settled) {
-                settled = true;
-                clearTimeout(to);
-                resolve(v);
-              }
-            };
-            const to = setTimeout(() => done(false), 20000);
-            this.video.addEventListener('playing', () => done(true), { once: true });
-          });
+          let played = !this.video.paused && !this.video.ended;
+          // Si ya estaba reproduciéndose, el player tuvo tiempo suficiente para
+          // exponer pistas. Con Whisper habilitado no repetir otra espera larga.
+          if (played && this.settings.whisperFallback) return this.startWhisper();
+          if (!played) {
+            D.overlay.setStatus('Sin subtítulos aún… pulsa ▶ en el video');
+            played = await new Promise((resolve) => {
+              let settled = false;
+              const onPlaying = () => done(true);
+              const done = (value) => {
+                if (!settled) {
+                  settled = true;
+                  clearTimeout(timeout);
+                  this.video.removeEventListener('playing', onPlaying);
+                  resolve(value);
+                }
+              };
+              const timeout = setTimeout(() => done(false), 20000);
+              this.video.addEventListener('playing', onPlaying, { once: true });
+            });
+          }
           if (played && this.state === 'loading') {
             D.overlay.setStatus('Reintentando extracción de subtítulos…');
             await D.sleep(1500);
