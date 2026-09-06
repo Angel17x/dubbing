@@ -221,7 +221,8 @@ window.DubAI = window.DubAI || {};
         this.audioUrl = URL.createObjectURL(blob);
         const audio = new Audio(this.audioUrl);
         this.audio = audio;
-        audio.playbackRate = D.clamp(rate, 0.8, 1.2);
+        // Seguir la velocidad del reproductor (0.5x–2x y valores intermedios).
+        audio.playbackRate = D.clamp(rate, 0.5, 2.5);
         audio.onended = done;
         audio.onerror = done;
         this.loading = false;

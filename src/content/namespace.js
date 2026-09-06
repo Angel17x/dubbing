@@ -40,6 +40,7 @@ window.DubAI = window.DubAI || {};
     xttsUrl: 'http://127.0.0.1:8020',
     xttsReference: '',
     rate: 1.0,
+    videoVolume: 1.0,
     duck: true,
     duckLevel: 0.25,
     showSubs: true,

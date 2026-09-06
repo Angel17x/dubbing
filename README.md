@@ -117,7 +117,7 @@ La muestra se guarda en `xtts-server/test-roger.wav`.
 5. Después de cualquier actualización, pulsa **Recargar** en DubAI.
 6. Recarga las pestañas de video con `Ctrl+F5`.
 
-La versión actual es `0.4.0`.
+La versión actual es `0.4.1`.
 
 ## Configuración recomendada
 
@@ -130,6 +130,7 @@ Abre el popup de DubAI y configura:
 - **Modelo:** `llama3.1:8b`.
 - **Motor de voz:** XTTS local — voz clonada.
 - **URL de XTTS:** `http://127.0.0.1:8020`.
+- **Volumen del video:** ajusta solo el reproductor, no el volumen de Windows.
 - **Audio de referencia:**
 
 ```text
@@ -168,6 +169,10 @@ mientras el resto se expresa en español natural.
 Al pausar el video, la voz también se detiene. Al reanudar, DubAI continúa desde
 la frase correspondiente. Al adelantar o retroceder, cancela la voz anterior y
 recalcula la posición.
+
+Si cambias la velocidad del reproductor, DubAI vuelve a sincronizar la frase
+activa y aplica el mismo factor al TTS. El control **Velocidad de voz** funciona
+como ajuste adicional sobre la velocidad seleccionada en el video.
 
 El botón flotante fue retirado. En YouTube se inserta en sus controles nativos;
 en Udemy y otros reproductores HTML5 se acopla a la barra inferior disponible.

@@ -40,6 +40,7 @@ window.DubAI = window.DubAI || {};
         const video = await D.waitForVideo();
         if (stale()) return;
         this.video = video;
+        this.video.volume = D.clamp(Number(this.settings.videoVolume ?? 1), 0, 1);
 
         const extractor = D.subtitles[D.currentSite()] || D.subtitles.generic;
         D.overlay.setStatus('Extrayendo subtítulos…');
@@ -264,7 +265,7 @@ window.DubAI = window.DubAI || {};
         pause: () => this.onPause(),
         play: () => this.tick(),
         seeked: () => this.onSeek(),
-        ratechange: () => {},
+        ratechange: () => this.onRateChange(),
         ended: () => this.onPause()
       };
       for (const [ev, fn] of Object.entries(this._bound)) v.addEventListener(ev, fn);
@@ -337,8 +338,9 @@ window.DubAI = window.DubAI || {};
       const dur = Math.max(0.5, cue.end - cue.start);
       // Mantener una velocidad inteligible. Las frases demasiado largas
       // provocarán una micro-pausa del video en tick(), no una voz acelerada.
-      let rate = D.clamp(cue.es.length / 15 / dur, 0.9, 1.25) * (this.settings.rate || 1);
-      rate = D.clamp(rate, 0.75, 1.35);
+      const videoRate = D.clamp(Number(this.video.playbackRate) || 1, 0.25, 4);
+      let rate = D.clamp(cue.es.length / 15 / dur, 0.9, 1.25) * (this.settings.rate || 1) * videoRate;
+      rate = D.clamp(rate, 0.5, 2.5);
       this.currentCue = cue; // bloquear la cola antes de que onstart se dispare
       D.tts.speak(cue.es, {
         rate,
@@ -405,6 +407,19 @@ window.DubAI = window.DubAI || {};
       this.restoreVolume();
       const t = this.video.currentTime;
       this.spoken = new Set(this.cues.filter((c) => c.end < t).map((c) => c.i));
+    },
+
+    onRateChange() {
+      // speechSynthesis no permite cambiar la velocidad de una frase activa.
+      // Reiniciarla desde el cue actual evita que video y voz se separen.
+      const interruptedCue = this.currentCue;
+      if (interruptedCue) {
+        D.tts.cancel();
+        this.spoken.delete(interruptedCue.i);
+        this.currentCue = null;
+        this.restoreVolume();
+      }
+      this.tick();
     },
 
     restoreVolume() {
@@ -493,7 +508,11 @@ window.DubAI = window.DubAI || {};
       D.overlay.setCaption(this.settings.showSubs ? text : '', seg.text);
       await new Promise((resolve) => {
         D.tts.speak(text, {
-          rate: D.clamp((this.settings.rate || 1) * 1.08, 0.75, 1.25),
+          rate: D.clamp(
+            (this.settings.rate || 1) * 1.08 * (Number(this.video.playbackRate) || 1),
+            0.5,
+            2.5
+          ),
           lang: tgt,
           voiceURI: this.settings.voiceURI,
           backend: this.settings.voiceBackend,
@@ -555,6 +574,14 @@ window.DubAI = window.DubAI || {};
     onSettings(s) {
       this.settings = Object.assign({}, this.settings, s);
       D.translator.settings = this.settings;
+      if (this.video && Object.prototype.hasOwnProperty.call(s, 'videoVolume')) {
+        const volume = D.clamp(Number(this.settings.videoVolume), 0, 1);
+        this.origVolume = volume;
+        if (!this.settings.duck) this.duckCount = 0;
+        this.video.volume = this.duckCount > 0 && this.settings.duck
+          ? D.clamp(volume * this.settings.duckLevel, 0, 1)
+          : volume;
+      }
       if (!s.showSubs) D.overlay.setCaption('');
     },
 

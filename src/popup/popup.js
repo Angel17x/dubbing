@@ -14,7 +14,7 @@
 
   const DEFAULTS = {
     targetLang: 'es', sourceLang: 'auto', voiceURI: '', rate: 1.0,
-    duck: true, duckLevel: 0.25, showSubs: true, whisperFallback: false, translatorBackend: 'auto',
+    videoVolume: 1.0, duck: true, duckLevel: 0.25, showSubs: true, whisperFallback: false, translatorBackend: 'auto',
     ollamaUrl: 'http://localhost:11434', ollamaModel: 'llama3.1:8b',
     ollamaModelUpgradeV1: false,
     voiceBackend: 'xtts', xttsUrl: 'http://127.0.0.1:8020',
@@ -50,6 +50,7 @@
       xttsUrl: $('xttsUrl').value.trim() || 'http://127.0.0.1:8020',
       xttsReference: $('xttsReference').value.trim(),
       rate: parseFloat($('rate').value),
+      videoVolume: parseFloat($('videoVolume').value),
       duck: $('duck').checked,
       duckLevel: parseFloat($('duckLevel').value),
       showSubs: $('showSubs').checked,
@@ -114,6 +115,7 @@
     collect();
     await chrome.storage.sync.set(settings);
     $('rateVal').textContent = settings.rate.toFixed(2).replace(/0$/, '');
+    $('videoVolumeVal').textContent = `${Math.round(settings.videoVolume * 100)}%`;
     $('duckVal').textContent = `${Math.round(settings.duckLevel * 100)}%`;
     if (activeTab) {
       chrome.tabs.sendMessage(activeTab.id, { type: 'DUBAI_SETTINGS', settings }).catch(() => {});
@@ -212,6 +214,7 @@
     $('xttsReference').value = settings.xttsReference;
     toggleVoiceCfg();
     $('rate').value = settings.rate;
+    $('videoVolume').value = settings.videoVolume;
     $('duck').checked = settings.duck;
     $('duckLevel').value = settings.duckLevel;
     $('showSubs').checked = settings.showSubs;
@@ -221,6 +224,7 @@
     $('ollamaModel').value = settings.ollamaModel;
     toggleOllamaCfg();
     $('rateVal').textContent = settings.rate;
+    $('videoVolumeVal').textContent = `${Math.round(settings.videoVolume * 100)}%`;
     $('duckVal').textContent = `${Math.round(settings.duckLevel * 100)}%`;
 
     fillVoices(settings.targetLang);
@@ -238,14 +242,14 @@
       setTimeout(refreshState, 400);
     });
 
-    for (const id of ['targetLang', 'sourceLang', 'voice', 'voiceBackend', 'xttsUrl', 'xttsReference', 'rate', 'duck', 'duckLevel', 'showSubs', 'whisperFallback', 'translatorBackend', 'ollamaUrl', 'ollamaModel']) {
+    for (const id of ['targetLang', 'sourceLang', 'voice', 'voiceBackend', 'xttsUrl', 'xttsReference', 'rate', 'videoVolume', 'duck', 'duckLevel', 'showSubs', 'whisperFallback', 'translatorBackend', 'ollamaUrl', 'ollamaModel']) {
       $(id).addEventListener('change', () => {
         if (id === 'targetLang') fillVoices($('targetLang').value);
         if (id === 'translatorBackend') toggleOllamaCfg();
         if (id === 'voiceBackend') toggleVoiceCfg();
         apply();
       });
-      if (id === 'rate' || id === 'duckLevel') $(id).addEventListener('input', apply);
+      if (id === 'rate' || id === 'videoVolume' || id === 'duckLevel') $(id).addEventListener('input', apply);
     }
 
     $('testOllama').addEventListener('click', testOllama);
