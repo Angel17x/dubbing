@@ -17,6 +17,8 @@ window.DubAI = window.DubAI || {};
     origVolume: 1,
     whisper: { active: false, epoch: 0, queue: Promise.resolve() },
     _bound: null,
+    _resumeAfterBuffer: false,
+    _initialBufferResolve: null,
 
     async toggle() {
       if (this.state === 'idle' || this.state === 'stopped' || this.state === 'error') return this.start();
@@ -85,6 +87,7 @@ window.DubAI = window.DubAI || {};
         }
 
         await this.prepareCues(data);
+        if (this.state !== 'loading') return;
         this.attach();
         this.state = 'ready';
         if (this.translationDone) {
@@ -94,6 +97,10 @@ window.DubAI = window.DubAI || {};
           D.overlay.setStatus('Traduciendo los primeros subtítulos…');
         }
         this.tick();
+        if (this._resumeAfterBuffer && this.video && this.video.paused) {
+          this._resumeAfterBuffer = false;
+          this.video.play().catch(() => {});
+        }
       } catch (e) {
         console.error('[DubAI]', e);
         this.state = 'error';
@@ -123,7 +130,7 @@ window.DubAI = window.DubAI || {};
       // o texto original guardado por una versión previa.
       const backend = this.settings.translatorBackend || 'auto';
       const model = backend === 'ollama' ? this.settings.ollamaModel || 'llama3.1:8b' : '';
-      const cacheKey = `dubai:v3:${location.hostname}:${videoId}:${src}:${tgt}:${backend}:${model}`;
+      const cacheKey = `dubai:v4:${location.hostname}:${videoId}:${src}:${tgt}:${backend}:${model}`;
       let cached = null;
       try {
         const c = await chrome.storage.local.get(cacheKey);
@@ -143,9 +150,17 @@ window.DubAI = window.DubAI || {};
       }
 
       // Traducción PROGRESIVA: el doblaje empieza con los primeros lotes,
-      // sin esperar a que se traduzca el video completo
+      // pero prepara un pequeño búfer antes de continuar la reproducción.
       this.translationDone = false;
+      this._resumeAfterBuffer = !!(this.video && !this.video.paused);
+      if (this._resumeAfterBuffer) this.video.pause();
+      const initialBufferReady = new Promise((resolve) => {
+        this._initialBufferResolve = resolve;
+      });
       this.translationPromise = this.translateLoop(src, tgt, cacheKey);
+      D.overlay.setStatus('Preparando traducción y voz inicial…');
+      await Promise.race([initialBufferReady, D.sleep(45000)]);
+      this._initialBufferResolve = null;
     },
 
     async translateLoop(src, tgt, cacheKey) {
@@ -163,8 +178,9 @@ window.DubAI = window.DubAI || {};
       try {
         for (let pos = 0; pos < total; ) {
           if (this.state === 'stopped' || this.state === 'idle' || this.cues !== cues) return;
-          // Solo dos frases al inicio para comenzar rápido; luego lotes pequeños.
-          const size = pos === 0 ? 2 : 6;
+          // Seis frases iniciales aportan contexto y permiten doblar por delante
+          // del audio original; después se mantiene el mismo búfer progresivo.
+          const size = 6;
           const indices = order.slice(pos, pos + size);
           const batch = indices.map((i) => cues[i]);
           D.overlay.setStatus(
@@ -181,9 +197,14 @@ window.DubAI = window.DubAI || {};
           batch.forEach((c, k) => {
             c.es = tr[k] || c.text;
           });
-          this.prefetchVoices(batch.slice(0, 3));
+          const voicesReady = this.prefetchVoices(batch.slice(0, 3));
           done += batch.length;
           pos += batch.length;
+          if (pos === batch.length && this._initialBufferResolve) {
+            // Con XTTS, esperar también a que las primeras voces estén listas.
+            await Promise.race([voicesReady, D.sleep(30000)]);
+            if (this._initialBufferResolve) this._initialBufferResolve();
+          }
           D.overlay.setStatus(`Traduciendo ${Math.min(done, total)}/${total} · ya puedes dar ▶`);
           D.overlay.setProgress(done / total);
         }
@@ -194,6 +215,7 @@ window.DubAI = window.DubAI || {};
         } catch (e) {}
       } catch (e) {
         if (this.cues !== cues) return; // error de un video anterior: ignorar
+        if (this._initialBufferResolve) this._initialBufferResolve();
         D.warn('translateLoop error', e);
         D.overlay.setStatus('Error de traducción: ' + ((e && e.message) || e));
         // Rellenar con el original lo que falte para no quedar mudo
@@ -203,16 +225,18 @@ window.DubAI = window.DubAI || {};
     },
 
     prefetchVoices(cues) {
-      if (!this.settings || this.settings.voiceBackend !== 'xtts') return;
+      if (!this.settings || this.settings.voiceBackend !== 'xtts') return Promise.resolve();
+      const tasks = [];
       for (const cue of cues) {
         if (!cue || !cue.es) continue;
-        D.tts.prefetch(cue.es, {
+        tasks.push(D.tts.prefetch(cue.es, {
           lang: this.settings.targetLang,
           backend: 'xtts',
           xttsUrl: this.settings.xttsUrl,
           xttsReference: this.settings.xttsReference
-        });
+        }));
       }
+      return Promise.all(tasks);
     },
 
     attach() {
@@ -469,6 +493,9 @@ window.DubAI = window.DubAI || {};
     async stop() {
       this.state = 'stopped';
       this._autoPaused = false;
+      this._resumeAfterBuffer = false;
+      if (this._initialBufferResolve) this._initialBufferResolve();
+      this._initialBufferResolve = null;
       this.detach();
       D.tts.cancel();
       this.currentCue = null;

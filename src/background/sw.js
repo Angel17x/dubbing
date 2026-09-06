@@ -47,8 +47,11 @@ async function ollamaChat(url, model, batch, src, tgt, extraInstruction = '') {
           `Eres un traductor profesional de subtítulos. ${sourceInstruction} ` +
           'Los elementos son fragmentos consecutivos de una misma narración: usa los elementos vecinos como contexto, aunque una frase empiece o termine a mitad de elemento. ' +
           'Responde ÚNICAMENTE con un array JSON de strings, con exactamente la misma cantidad de elementos y el mismo orden que la entrada. ' +
-          `Cada salida debe estar completamente en ${tgtName}; no conserves palabras del idioma original salvo nombres propios y términos técnicos. ` +
-          'Sin numeración, sin comentarios, sin markdown. Mantén nombres propios y usa lenguaje natural hablado, conciso (es para doblaje). ' +
+          `Cada salida debe usar lenguaje natural hablado en ${tgtName}, excepto nombres propios y vocabulario técnico que se utiliza habitualmente en inglés. ` +
+          'Conserva exactamente en inglés, con la misma escritura y sin explicaciones, las siglas y los nombres de comandos, herramientas, productos, APIs, SDKs, protocolos, rutas, código y opciones de terminal. ' +
+          'Por ejemplo: CLI, API, SDK, Docker, Kubernetes, Linux, Git, GitHub, PowerShell, Bash, kubectl, nerdctl, containerd, npm, pip, SSH, HTTP, JSON, YAML y flags como --help. ' +
+          'No traduzcas esos términos como palabras comunes; traduce de forma natural al español todo lo que los rodea. ' +
+          'Sin numeración, sin comentarios y sin markdown. Sé conciso porque el resultado se usará para doblaje. ' +
           extraInstruction
       },
       {

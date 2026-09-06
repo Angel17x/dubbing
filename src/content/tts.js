@@ -129,11 +129,11 @@ window.DubAI = window.DubAI || {};
     },
 
     prefetch(text, { lang = 'es', backend = 'system', xttsUrl, xttsReference } = {}) {
-      if (backend !== 'xtts' || !text) return;
+      if (backend !== 'xtts' || !text) return Promise.resolve();
       // XTTS procesa una síntesis por vez. No inundar el service worker y el
       // servidor cuando una traducción completa llega desde caché.
-      if (this.inflight.size >= 2) return;
-      this._getXttsAudio(text, lang, xttsUrl, xttsReference).catch((e) => D.warn('XTTS prefetch falló', e));
+      if (this.inflight.size >= 2) return Promise.resolve();
+      return this._getXttsAudio(text, lang, xttsUrl, xttsReference).catch((e) => D.warn('XTTS prefetch falló', e));
     },
 
     async _speakXtts(text, { rate, lang, xttsUrl, xttsReference, onstart, onend }) {
