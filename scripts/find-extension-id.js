@@ -25,8 +25,10 @@ for (const root of profileRoots) {
   if (!fs.existsSync(root)) continue;
   for (const profile of fs.readdirSync(root, { withFileTypes: true })) {
     if (!profile.isDirectory()) continue;
-    const preferences = path.join(root, profile.name, 'Secure Preferences');
-    if (fs.existsSync(preferences)) preferenceFiles.push(preferences);
+    const securePrefs = path.join(root, profile.name, 'Secure Preferences');
+    const prefs = path.join(root, profile.name, 'Preferences');
+    if (fs.existsSync(securePrefs)) preferenceFiles.push(securePrefs);
+    if (fs.existsSync(prefs)) preferenceFiles.push(prefs);
   }
 }
 
